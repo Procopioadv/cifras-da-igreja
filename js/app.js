@@ -388,6 +388,8 @@ function viewSetlist() {
   const manageBar = active ? `
     <div class="setlist-manage">
       <span class="setlist-name">${h(active.name)}</span>
+      ${songs.length ? `<button class="btn-slman" onclick="doShareSetlist()" title="Compartilhar">&#128257;</button>` : ''}
+      ${songs.length ? `<button class="btn-slman" onclick="doPrintSetlist()" title="Imprimir / salvar PDF">&#128424;</button>` : ''}
       <button class="btn-slman" onclick="doRenameSetlist('${jsEsc(active.id)}')" title="Renomear">&#9998;</button>
       <button class="btn-slman" onclick="doDeleteSetlist('${jsEsc(active.id)}')" title="Excluir setlist">&#128465;</button>
       ${songs.length ? `<button class="btn-slman" onclick="doClearSetlist()" title="Limpar músicas">&#10005;</button>` : ''}
@@ -719,6 +721,78 @@ function doDeleteSetlist(id) {
   if (!confirm(`Excluir o setlist "${cur.name}"? As músicas continuam no repertório.`)) return;
   Setlist.delete(id);
   renderMain();
+}
+
+async function doShareSetlist() {
+  const sl = Setlist.active();
+  if (!sl) return;
+  const songs = Setlist.get();
+  const lines = [`\u{1F3B5} ${sl.name}`, ''];
+  songs.forEach((s, i) => {
+    const bits = [`${i + 1}. ${s.title}`];
+    if (s.artist) bits.push(`— ${s.artist}`);
+    if (s.key) bits.push(`(${s.key}${s.capo ? `, capo ${s.capo}` : ''})`);
+    lines.push(bits.join(' '));
+    if (s.notes) lines.push(`   \u{1F4AD} ${s.notes.split('\n')[0]}`);
+  });
+  const text = lines.join('\n');
+  if (navigator.share) {
+    try { await navigator.share({ title: sl.name, text }); return; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    alert('Setlist copiado! Cole no WhatsApp/e-mail.');
+  } catch {
+    prompt('Copie o texto abaixo:', text);
+  }
+}
+
+function doPrintSetlist() {
+  const sl = Setlist.active();
+  if (!sl) return;
+  const songs = Setlist.get();
+  const today = new Date().toLocaleDateString('pt-BR');
+  const escape = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const chordify = c => escape(c).replace(/\[([^\]]+)\]/g, '<b class="ch">[$1]</b>');
+  const body = songs.map((s, i) => `
+    <section class="song">
+      <div class="hd">
+        <span class="num">${i + 1}</span>
+        <span class="tt">${escape(s.title)}</span>
+        ${s.key ? `<span class="k">${escape(s.key)}${s.capo ? ` · capo ${s.capo}` : ''}</span>` : ''}
+      </div>
+      ${s.artist ? `<div class="ar">${escape(s.artist)}</div>` : ''}
+      ${s.notes ? `<div class="nt">${escape(s.notes)}</div>` : ''}
+      <pre>${chordify(s.content || '')}</pre>
+    </section>`).join('');
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escape(sl.name)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 1.5rem; max-width: 800px; margin: 0 auto; color: #111; }
+      h1 { color: #4338ca; border-bottom: 2px solid #4338ca; padding-bottom: 0.4rem; margin: 0 0 0.25rem; }
+      .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+      .song { page-break-inside: avoid; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
+      .hd { display: flex; align-items: baseline; gap: 0.6rem; }
+      .num { color: #7c3aed; font-weight: 700; font-size: 1.1rem; }
+      .tt { font-size: 1.2rem; font-weight: 700; flex: 1; }
+      .k { background: #4338ca; color: white; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; }
+      .ar { color: #666; font-size: 0.85rem; font-style: italic; margin-top: 0.15rem; }
+      .nt { background: #fef3c7; border-left: 3px solid #f59e0b; padding: 0.4rem 0.6rem; margin: 0.5rem 0; font-size: 0.85rem; border-radius: 4px; }
+      pre { font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; margin-top: 0.75rem; }
+      .ch { color: #2563eb; font-weight: 700; }
+      @media print { body { padding: 0.5rem; } .song { border: none; } }
+    </style></head>
+    <body>
+      <h1>${escape(sl.name)}</h1>
+      <div class="meta">${songs.length} música${songs.length !== 1 ? 's' : ''} &middot; ${today}</div>
+      ${body}
+      <script>window.onload = () => setTimeout(() => window.print(), 400);</script>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { alert('Habilite pop-ups para imprimir.'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 // ── DRAG & DROP para reordenar setlist ────────
