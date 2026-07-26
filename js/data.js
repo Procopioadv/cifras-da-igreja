@@ -344,6 +344,7 @@ const Setlist = {
       return arr;
     });
   },
+  reorder(newIds) { this._mutateActive(() => newIds); },
   clear() { this._mutateActive(() => []); }
 };
 

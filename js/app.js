@@ -420,6 +420,7 @@ function viewSetlist() {
   const manageBar = active ? `
     <div class="setlist-manage">
       <span class="setlist-name">${h(active.name)}</span>
+      ${songs.length >= 2 ? `<button class="btn-slman" onclick="doSortLiturgical()" title="Ordenar pela ordem da missa">&#127925;</button>` : ''}
       ${songs.length ? `<button class="btn-slman" onclick="doShareSetlist()" title="Compartilhar">&#128257;</button>` : ''}
       ${songs.length ? `<button class="btn-slman" onclick="doPrintSetlist()" title="Imprimir / salvar PDF">&#128424;</button>` : ''}
       <button class="btn-slman" onclick="doRenameSetlist('${jsEsc(active.id)}')" title="Renomear">&#9998;</button>
@@ -752,6 +753,22 @@ function doRenameSetlist(id) {
   const name = prompt('Novo nome:', cur.name);
   if (name === null) return;
   Setlist.rename(id, name);
+  renderMain();
+}
+
+function doSortLiturgical() {
+  const active = Setlist.active();
+  if (!active || active.songIds.length < 2) return;
+  // CATS já está na ordem da missa. Categoria vazia/desconhecida vai pro fim.
+  const order = new Map(CATS.map((c, i) => [c, i]));
+  const sorted = active.songIds
+    .map((id, idx) => {
+      const s = Songs.get(id);
+      return { id, idx, rank: s && order.has(s.category) ? order.get(s.category) : 999 };
+    })
+    .sort((a, b) => a.rank - b.rank || a.idx - b.idx)
+    .map(it => it.id);
+  Setlist.reorder(sorted);
   renderMain();
 }
 
