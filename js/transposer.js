@@ -104,5 +104,7 @@ function displayKey(key, semitones) {
   const i = noteIndex(key);
   if (i === -1) return key;
   const j = ((i + semitones) % 12 + 12) % 12;
-  return SHARP[j];
+  // Preserva a preferência de bemol/sustenido do tom original
+  const useFlats = FLAT.indexOf(key) !== -1 && SHARP.indexOf(key) === -1;
+  return (useFlats ? FLAT : SHARP)[j];
 }
