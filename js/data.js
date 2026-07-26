@@ -73,9 +73,15 @@ const Cloud = {
   },
   _enqueue(action) {
     const q = this._queue();
-    // Remove ações anteriores para a mesma música (a última vence)
-    const targetId = action.song?.id || action.id;
-    const filtered = q.filter(a => (a.song?.id || a.id) !== targetId);
+    let filtered;
+    if (action.type === 'setlist') {
+      // Setlist: só a última versão importa
+      filtered = q.filter(a => a.type !== 'setlist');
+    } else {
+      // Save/delete: última ação para o mesmo id vence
+      const targetId = action.song?.id || action.id;
+      filtered = q.filter(a => a.type === 'setlist' || (a.song?.id || a.id) !== targetId);
+    }
     filtered.push(action);
     this._saveQueue(filtered);
   },
@@ -126,6 +132,18 @@ const Cloud = {
       }
 
       local.songs = merged;
+
+      // Merge do setlist: quem tem updatedAt maior vence
+      const cloudSetlist = Array.isArray(data.setlist) ? data.setlist : null;
+      const cloudSetlistUpdatedAt = Number(data.setlistUpdatedAt) || 0;
+      const localSetlistUpdatedAt = Number(local.setlistUpdatedAt) || 0;
+      if (cloudSetlist && cloudSetlistUpdatedAt >= localSetlistUpdatedAt) {
+        local.setlist = cloudSetlist;
+        local.setlistUpdatedAt = cloudSetlistUpdatedAt;
+      } else if (localSetlistUpdatedAt > cloudSetlistUpdatedAt) {
+        Cloud._enqueue({ type: 'setlist', ids: local.setlist || [], updatedAt: localSetlistUpdatedAt });
+      }
+
       _save(local);
       toPush.forEach(song => Cloud._enqueue({ type: 'save', song }));
 
@@ -162,6 +180,18 @@ const Cloud = {
     }
   },
 
+  async pushSetlist(ids, updatedAt) {
+    if (!this.url) return;
+    this._setState('syncing');
+    try {
+      await this._send({ action: 'setlist', ids, updatedAt });
+      this._setState(this._queue().length ? 'pending' : 'idle');
+    } catch(e) {
+      this._enqueue({ type: 'setlist', ids, updatedAt });
+      this._setState('error');
+    }
+  },
+
   async flushQueue() {
     if (!this.url) return { ok: false, remaining: 0 };
     const q = this._queue();
@@ -171,9 +201,10 @@ const Cloud = {
     let sent = 0;
     for (const action of q) {
       try {
-        const payload = action.type === 'save'
-          ? { action: 'save', song: action.song }
-          : { action: 'delete', id: action.id };
+        let payload;
+        if (action.type === 'save')    payload = { action: 'save', song: action.song };
+        else if (action.type === 'delete')  payload = { action: 'delete', id: action.id };
+        else if (action.type === 'setlist') payload = { action: 'setlist', ids: action.ids, updatedAt: action.updatedAt };
         await this._send(payload);
         sent++;
       } catch {
@@ -194,30 +225,32 @@ const Setlist = {
   ids() { return _db().setlist || []; },
   get() { return this.ids().map(id => Songs.get(id)).filter(Boolean); },
   has(id) { return this.ids().includes(id); },
-  add(id) {
+
+  _mutate(fn) {
     const data = _db();
-    if (!(data.setlist || []).includes(id)) {
-      data.setlist = [...(data.setlist || []), id];
-      _save(data);
-    }
+    const nextList = fn(data.setlist || []);
+    data.setlist = nextList;
+    data.setlistUpdatedAt = Date.now();
+    _save(data);
+    Cloud.pushSetlist(nextList, data.setlistUpdatedAt);
+  },
+
+  add(id) {
+    this._mutate(list => list.includes(id) ? list : [...list, id]);
   },
   remove(id) {
-    const data = _db();
-    data.setlist = (data.setlist || []).filter(sid => sid !== id);
-    _save(data);
+    this._mutate(list => list.filter(sid => sid !== id));
   },
   move(from, to) {
-    const data = _db();
-    const list = [...(data.setlist || [])];
-    const [item] = list.splice(from, 1);
-    list.splice(to, 0, item);
-    data.setlist = list;
-    _save(data);
+    this._mutate(list => {
+      const arr = [...list];
+      const [item] = arr.splice(from, 1);
+      arr.splice(to, 0, item);
+      return arr;
+    });
   },
   clear() {
-    const data = _db();
-    data.setlist = [];
-    _save(data);
+    this._mutate(() => []);
   }
 };
 

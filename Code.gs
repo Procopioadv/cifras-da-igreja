@@ -50,7 +50,10 @@ function doGet() {
         createdAt: Number(r[7] || 0),
         updatedAt: Number(r[8] || 0)
       }));
-    return out({ ok: true, songs });
+    const props = PropertiesService.getScriptProperties();
+    const setlist = JSON.parse(props.getProperty('setlist') || '[]');
+    const setlistUpdatedAt = Number(props.getProperty('setlistUpdatedAt') || 0);
+    return out({ ok: true, songs, setlist, setlistUpdatedAt });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
@@ -59,12 +62,22 @@ function doGet() {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    if (body.action === 'save')   return out(saveSong(body.song));
-    if (body.action === 'delete') return out(deleteSong(body.id));
+    if (body.action === 'save')    return out(saveSong(body.song));
+    if (body.action === 'delete')  return out(deleteSong(body.id));
+    if (body.action === 'setlist') return out(saveSetlist(body));
     return out({ ok: false, error: 'ação inválida' });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
+}
+
+function saveSetlist(body) {
+  const ids = Array.isArray(body.ids) ? body.ids.filter(x => typeof x === 'string') : [];
+  const updatedAt = Number(body.updatedAt) || Date.now();
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('setlist', JSON.stringify(ids));
+  props.setProperty('setlistUpdatedAt', String(updatedAt));
+  return { ok: true, updatedAt };
 }
 
 function saveSong(song) {
