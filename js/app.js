@@ -352,6 +352,15 @@ function viewSettings() {
   const count = Songs.all().length;
   const cloudUrl = Cloud.url;
   const cloudOk = Cloud.isConfigured();
+  const pending = Cloud.pendingCount();
+  const cloudState = Cloud.state;
+
+  const statusMsg = !cloudOk
+    ? '&#9898; Não configurado. Configure para compartilhar o repertório entre dispositivos.'
+    : cloudState === 'syncing' ? '&#8635; Sincronizando...'
+    : cloudState === 'error'   ? `&#9888;&#65039; Erro na sincronização. ${pending} alteraç${pending !== 1 ? 'ões' : 'ão'} pendente${pending !== 1 ? 's' : ''}.`
+    : cloudState === 'pending' ? `&#8987; ${pending} alteraç${pending !== 1 ? 'ões' : 'ão'} aguardando envio.`
+    : '&#9989; Nuvem configurada e sincronizada.';
 
   return `
     <div class="header">
@@ -361,11 +370,7 @@ function viewSettings() {
 
     <div class="settings-section">
       <h3>&#9729; Sincronização em Nuvem</h3>
-      <p style="margin-bottom:0.75rem">
-        ${cloudOk
-          ? '&#9989; Nuvem configurada. Músicas sincronizam automaticamente.'
-          : '&#9898; Não configurado. Configure para compartilhar o repertório entre dispositivos.'}
-      </p>
+      <p style="margin-bottom:0.75rem">${statusMsg}</p>
       <input class="form-input" type="url" id="cloud-url" style="margin-bottom:0.5rem"
         placeholder="Cole aqui a URL do Apps Script..."
         value="${h(cloudUrl)}">
@@ -503,14 +508,18 @@ function doSaveCloudUrl() {
 }
 
 async function doSyncNow() {
-  const el = document.getElementById('busca-results') || document.body;
   const btn = document.querySelector('[onclick="doSyncNow()"]');
   if (btn) btn.textContent = '⏳ Sincronizando...';
 
   const result = await Cloud.pull();
   renderMain();
-  if (result.ok) alert(`✅ Sincronizado! ${result.count} músicas carregadas da nuvem.`);
-  else alert('Erro ao sincronizar: ' + (result.reason || 'verifique a URL'));
+  if (result.ok) {
+    const pending = Cloud.pendingCount();
+    if (pending > 0) alert(`Sincronizado, mas ${pending} alteração(ões) ainda pendente(s).`);
+    else alert(`✅ Sincronizado! ${result.count} músicas na nuvem.`);
+  } else {
+    alert('Erro ao sincronizar: ' + (result.reason || 'verifique a URL'));
+  }
 }
 
 async function doBuscar() {
@@ -644,6 +653,11 @@ async function init() {
   if (Cloud.isConfigured() && navigator.onLine) {
     Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
   }
+
+  // Atualiza tela de configurações em tempo real quando o status da nuvem muda
+  window.addEventListener('cloud:status', () => {
+    if (state.view === 'settings') renderMain();
+  });
 
   if (Songs.all().length === 0) loadSampleSongs();
   history.replaceState({ ...state }, '');

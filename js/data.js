@@ -50,15 +50,58 @@ const Cloud = {
   setUrl(v) { localStorage.setItem('cifras_cloud_url', v.trim()); },
   isConfigured() { return !!this.url; },
 
+  // Estado: idle | syncing | error | pending
+  _state: 'idle',
+  get state() {
+    if (this._state === 'syncing') return 'syncing';
+    if (this._queue().length > 0) return 'pending';
+    return this._state;
+  },
+  pendingCount() { return this._queue().length; },
+  _setState(s) {
+    this._state = s;
+    window.dispatchEvent(new CustomEvent('cloud:status', { detail: this.state }));
+  },
+
+  _queue() {
+    try { return JSON.parse(localStorage.getItem('cifras_pending_queue') || '[]'); }
+    catch { return []; }
+  },
+  _saveQueue(q) {
+    localStorage.setItem('cifras_pending_queue', JSON.stringify(q));
+    window.dispatchEvent(new CustomEvent('cloud:status', { detail: this.state }));
+  },
+  _enqueue(action) {
+    const q = this._queue();
+    // Remove ações anteriores para a mesma música (a última vence)
+    const targetId = action.song?.id || action.id;
+    const filtered = q.filter(a => (a.song?.id || a.id) !== targetId);
+    filtered.push(action);
+    this._saveQueue(filtered);
+  },
+
+  async _send(payload) {
+    const res = await fetch(this.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res;
+  },
+
   async pull() {
     if (!this.url) return { ok: false, reason: 'not-configured' };
+    this._setState('syncing');
     try {
       const res = await fetch(this.url, { cache: 'no-store' });
       const data = await res.json();
-      if (!data.ok || !Array.isArray(data.songs)) return { ok: false, reason: 'bad-response' };
+      if (!data.ok || !Array.isArray(data.songs)) {
+        this._setState('error');
+        return { ok: false, reason: 'bad-response' };
+      }
 
       // Merge por id: quem tem updatedAt mais recente vence.
-      // Músicas só locais são preservadas e reenviadas para a nuvem.
       const local = _db();
       const localById = new Map(local.songs.map(s => [s.id, s]));
       const cloudById = new Map(data.songs.map(s => [s.id, s]));
@@ -84,32 +127,68 @@ const Cloud = {
 
       local.songs = merged;
       _save(local);
-      toPush.forEach(song => Cloud.pushSave(song));
+      toPush.forEach(song => Cloud._enqueue({ type: 'save', song }));
 
+      const flush = await this.flushQueue();
+      this._setState(flush.remaining > 0 ? 'error' : 'idle');
       return { ok: true, count: merged.length, pushed: toPush.length };
     } catch(e) {
+      this._setState('error');
       return { ok: false, reason: e.message };
     }
   },
 
-  pushSave(song) {
+  async pushSave(song) {
     if (!this.url || !song) return;
-    fetch(this.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'save', song })
-    }).catch(() => {});
+    this._setState('syncing');
+    try {
+      await this._send({ action: 'save', song });
+      this._setState(this._queue().length ? 'pending' : 'idle');
+    } catch(e) {
+      this._enqueue({ type: 'save', song });
+      this._setState('error');
+    }
   },
 
-  pushDelete(id) {
+  async pushDelete(id) {
     if (!this.url) return;
-    fetch(this.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'delete', id })
-    }).catch(() => {});
+    this._setState('syncing');
+    try {
+      await this._send({ action: 'delete', id });
+      this._setState(this._queue().length ? 'pending' : 'idle');
+    } catch(e) {
+      this._enqueue({ type: 'delete', id });
+      this._setState('error');
+    }
+  },
+
+  async flushQueue() {
+    if (!this.url) return { ok: false, remaining: 0 };
+    const q = this._queue();
+    if (q.length === 0) return { ok: true, sent: 0, remaining: 0 };
+
+    const remaining = [];
+    let sent = 0;
+    for (const action of q) {
+      try {
+        const payload = action.type === 'save'
+          ? { action: 'save', song: action.song }
+          : { action: 'delete', id: action.id };
+        await this._send(payload);
+        sent++;
+      } catch {
+        remaining.push(action);
+      }
+    }
+    this._saveQueue(remaining);
+    return { ok: remaining.length === 0, sent, remaining: remaining.length };
   }
 };
+
+// Reenvia pendências assim que voltar a ficar online
+window.addEventListener('online', () => {
+  if (Cloud.isConfigured()) Cloud.flushQueue();
+});
 
 const Setlist = {
   ids() { return _db().setlist || []; },
