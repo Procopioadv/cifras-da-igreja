@@ -58,6 +58,32 @@ const Songs = {
     Cloud.pushSave(Songs.get(savedId));
     return savedId;
   },
+  markPlayed(id, ts) {
+    const data = _db();
+    const s = data.songs.find(x => x.id === id);
+    if (!s) return;
+    s.lastPlayedAt = ts || Date.now();
+    s.updatedAt = Date.now();
+    _save(data);
+    Cloud.pushSave(s);
+  },
+  markManyPlayed(ids, ts) {
+    const data = _db();
+    const now = ts || Date.now();
+    const changed = [];
+    ids.forEach(id => {
+      const s = data.songs.find(x => x.id === id);
+      if (!s) return;
+      s.lastPlayedAt = now;
+      s.updatedAt = Date.now();
+      changed.push(s);
+    });
+    _save(data);
+    // Envia cada uma para o backend (fila reduz duplicatas por id)
+    changed.forEach(s => Cloud.pushSave(s));
+    return changed.length;
+  },
+
   delete(id) {
     const data = _db();
     data.songs = data.songs.filter(s => s.id !== id);

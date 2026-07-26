@@ -358,6 +358,38 @@ body {
   font-size: 0.9rem;
 }
 
+.song-played {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.played-info { flex: 1; color: var(--muted); min-width: 0; }
+.played-info strong { color: var(--text); }
+.played-never { font-style: italic; }
+
+.btn-played {
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-played:active { opacity: 0.85; }
+
+.song-played-hint { color: #16a34a; font-weight: 600; margin-top: 0.15rem; }
+
 /* ── TRANSPOSE BAR ───────────────────────────── */
 .transpose-bar {
   display: flex;

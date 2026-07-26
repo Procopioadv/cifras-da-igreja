@@ -269,16 +269,19 @@ function viewRepertorio() {
   // Ordenação
   if (state.sort === 'updated')      filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   else if (state.sort === 'created') filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  else if (state.sort === 'played')  filtered.sort((a, b) => (a.lastPlayedAt || 0) - (b.lastPlayedAt || 0));
   else                               filtered.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
 
   const anyFilter = q || cat || filterKey || state.filterInSetlist || state.sort !== 'title';
 
+  const showPlayedInfo = state.sort === 'played';
   const list = filtered.length
     ? filtered.map(s => `
         <div class="song-item" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
           <div class="song-item-body">
             <span class="song-name">${h(s.title)}</span>
             ${s.artist ? `<span class="song-sub">${h(s.artist)}</span>` : ''}
+            ${showPlayedInfo ? `<span class="song-sub song-played-hint">${s.lastPlayedAt ? '&#127925; ' + relativeTime(s.lastPlayedAt) : '&#127925; nunca tocada'}</span>` : ''}
           </div>
           <div class="song-item-right">
             ${s.key ? `<span class="badge badge-key">${h(s.key)}</span>` : ''}
@@ -310,6 +313,7 @@ function viewRepertorio() {
         <option value="title"   ${state.sort === 'title'   ? 'selected' : ''}>A → Z</option>
         <option value="updated" ${state.sort === 'updated' ? 'selected' : ''}>Recém-editadas</option>
         <option value="created" ${state.sort === 'created' ? 'selected' : ''}>Recém-adicionadas</option>
+        <option value="played"  ${state.sort === 'played'  ? 'selected' : ''}>Menos tocadas recentemente</option>
       </select>
       ${activeSetlist ? `
       <button class="filter-toggle ${state.filterInSetlist ? 'on' : ''}" onclick="state.filterInSetlist=!state.filterInSetlist;renderMain()" title="Só do setlist ativo">
@@ -357,6 +361,13 @@ function viewSong() {
       <div class="song-notes-label">&#128221; Anotações</div>
       <div class="song-notes-body">${h(song.notes).replace(/\n/g, '<br>')}</div>
     </div>` : ''}
+
+    <div class="song-played">
+      ${song.lastPlayedAt
+        ? `<span class="played-info">&#127925; Última vez tocada: <strong>${new Date(song.lastPlayedAt).toLocaleDateString('pt-BR')}</strong> (${relativeTime(song.lastPlayedAt)})</span>`
+        : `<span class="played-info played-never">&#127925; Ainda não marcada como tocada</span>`}
+      <button class="btn-played" onclick="doMarkPlayed('${jsEsc(song.id)}')">&#10003; Tocada hoje</button>
+    </div>
 
     <div class="transpose-bar">
       <button class="btn-tp" onclick="doTranspose(-2)">-2</button>
@@ -420,6 +431,7 @@ function viewSetlist() {
   const manageBar = active ? `
     <div class="setlist-manage">
       <span class="setlist-name">${h(active.name)}</span>
+      ${songs.length ? `<button class="btn-slman" onclick="doMarkSetlistPlayed()" title="Marcar setlist inteiro como tocado hoje">&#10003;</button>` : ''}
       ${songs.length >= 2 ? `<button class="btn-slman" onclick="doSortLiturgical()" title="Ordenar pela ordem da missa">&#127925;</button>` : ''}
       ${songs.length ? `<button class="btn-slman" onclick="doShareSetlist()" title="Compartilhar">&#128257;</button>` : ''}
       ${songs.length ? `<button class="btn-slman" onclick="doPrintSetlist()" title="Imprimir / salvar PDF">&#128424;</button>` : ''}
@@ -783,6 +795,31 @@ function doDeleteSetlist(id) {
 function doChangeSort(v) {
   state.sort = v;
   localStorage.setItem('cifras_sort', v);
+  renderMain();
+}
+
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  const d = Math.floor(diff / 86400000);
+  if (d < 1) return 'hoje';
+  if (d === 1) return 'ontem';
+  if (d < 7) return `há ${d} dias`;
+  if (d < 30) return `há ${Math.floor(d / 7)} semana${Math.floor(d / 7) === 1 ? '' : 's'}`;
+  if (d < 365) return `há ${Math.floor(d / 30)} ${Math.floor(d / 30) === 1 ? 'mês' : 'meses'}`;
+  return `há ${Math.floor(d / 365)} ano${Math.floor(d / 365) === 1 ? '' : 's'}`;
+}
+
+function doMarkPlayed(id) {
+  Songs.markPlayed(id);
+  renderMain();
+}
+
+function doMarkSetlistPlayed() {
+  const active = Setlist.active();
+  if (!active || !active.songIds.length) return;
+  if (!confirm(`Marcar as ${active.songIds.length} músicas de "${active.name}" como tocadas hoje?`)) return;
+  const n = Songs.markManyPlayed(active.songIds);
+  alert(`${n} música${n !== 1 ? 's' : ''} marcada${n !== 1 ? 's' : ''} como tocada${n !== 1 ? 's' : ''} hoje.`);
   renderMain();
 }
 

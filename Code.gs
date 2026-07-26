@@ -13,7 +13,7 @@
 // 6. Cole a URL em Configurações > Sincronização em Nuvem no app
 // ============================================================
 
-const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes'];
+const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes','lastPlayedAt'];
 
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -54,9 +54,10 @@ function doGet() {
         capo:      Number(r[4] || 0),
         category:  String(r[5] || ''),
         content:   String(r[6] || ''),
-        createdAt: Number(r[7] || 0),
-        updatedAt: Number(r[8] || 0),
-        notes:     String(r[9] || '')
+        createdAt:    Number(r[7] || 0),
+        updatedAt:    Number(r[8] || 0),
+        notes:        String(r[9] || ''),
+        lastPlayedAt: Number(r[10] || 0)
       }));
     const props = PropertiesService.getScriptProperties();
     let setlists = JSON.parse(props.getProperty('setlists') || 'null');
@@ -142,7 +143,8 @@ function saveSong(song) {
     if (String(rows[i][0]) === String(song.id)) {
       sheet.getRange(i + 1, 1, 1, HEADERS.length).setValues([[
         song.id, song.title||'', song.artist||'', song.key||'',
-        song.capo||0, song.category||'', song.content||'', rows[i][7], now, song.notes||''
+        song.capo||0, song.category||'', song.content||'', rows[i][7], now,
+        song.notes||'', Number(song.lastPlayedAt || rows[i][10] || 0)
       ]]);
       return { ok: true, id: song.id };
     }
@@ -151,7 +153,8 @@ function saveSong(song) {
   const id = song.id || Utilities.getUuid();
   sheet.appendRow([
     id, song.title||'', song.artist||'', song.key||'',
-    song.capo||0, song.category||'', song.content||'', song.createdAt||now, now, song.notes||''
+    song.capo||0, song.category||'', song.content||'', song.createdAt||now, now,
+    song.notes||'', Number(song.lastPlayedAt || 0)
   ]);
   return { ok: true, id };
 }
