@@ -398,21 +398,14 @@ function viewSetlist() {
     : !songs.length
     ? '<div class="empty-state">Setlist vazio<br><small>Adicione músicas pelo repertório usando &#9734;</small></div>'
     : songs.map((s, i) => `
-        <div class="setlist-item">
+        <div class="setlist-item" data-idx="${i}">
+          <span class="setlist-handle" title="Arraste para reordenar">&#8942;&#8942;</span>
           <span class="setlist-num">${i + 1}</span>
           <div class="setlist-info" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
             <span class="song-name">${h(s.title)}</span>
             ${s.key ? `<span class="badge badge-key">${h(s.key)}</span>` : ''}
           </div>
-          <div class="setlist-controls">
-            ${i > 0
-              ? `<button class="btn-move" onclick="Setlist.move(${i},${i-1});renderMain()">&#8593;</button>`
-              : '<span class="btn-move-ph"></span>'}
-            ${i < songs.length - 1
-              ? `<button class="btn-move" onclick="Setlist.move(${i},${i+1});renderMain()">&#8595;</button>`
-              : '<span class="btn-move-ph"></span>'}
-            <button class="btn-remove" onclick="Setlist.remove('${jsEsc(s.id)}');renderMain()">&#10005;</button>
-          </div>
+          <button class="btn-remove" onclick="Setlist.remove('${jsEsc(s.id)}');renderMain()">&#10005;</button>
         </div>`).join('');
 
   return `
@@ -727,6 +720,75 @@ function doDeleteSetlist(id) {
   Setlist.delete(id);
   renderMain();
 }
+
+// ── DRAG & DROP para reordenar setlist ────────
+let _drag = null;
+
+function onSetlistHandleDown(e, handle) {
+  const item = handle.closest('.setlist-item');
+  if (!item) return;
+  e.preventDefault();
+  const list = item.parentElement;
+  const items = [...list.querySelectorAll('.setlist-item')];
+  const rect = item.getBoundingClientRect();
+  const fromIndex = items.indexOf(item);
+  _drag = {
+    item, list, items, fromIndex,
+    currentIndex: fromIndex,
+    height: rect.height,
+    startY: e.clientY,
+    pointerId: e.pointerId
+  };
+  handle.setPointerCapture(e.pointerId);
+  item.classList.add('dragging');
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragEnd);
+  document.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!_drag) return;
+  const dy = e.clientY - _drag.startY;
+  _drag.item.style.transform = `translateY(${dy}px)`;
+
+  const listRect = _drag.list.getBoundingClientRect();
+  const relY = e.clientY - listRect.top;
+  let newIndex = Math.floor(relY / _drag.height);
+  newIndex = Math.max(0, Math.min(_drag.items.length - 1, newIndex));
+
+  if (newIndex !== _drag.currentIndex) {
+    _drag.currentIndex = newIndex;
+    _drag.items.forEach((it, i) => {
+      if (it === _drag.item) return;
+      let shift = 0;
+      if (_drag.fromIndex < newIndex && i > _drag.fromIndex && i <= newIndex) shift = -_drag.height;
+      else if (_drag.fromIndex > newIndex && i >= newIndex && i < _drag.fromIndex) shift = _drag.height;
+      it.style.transition = 'transform 0.15s';
+      it.style.transform = `translateY(${shift}px)`;
+    });
+  }
+}
+
+function onDragEnd() {
+  if (!_drag) return;
+  const { fromIndex, currentIndex, items, item } = _drag;
+  items.forEach(it => { it.style.transform = ''; it.style.transition = ''; });
+  item.classList.remove('dragging');
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragEnd);
+  document.removeEventListener('pointercancel', onDragEnd);
+  _drag = null;
+  if (fromIndex !== currentIndex) {
+    Setlist.move(fromIndex, currentIndex);
+    renderMain();
+  }
+}
+
+// Delegação global: pega qualquer alça de setlist, mesmo após re-render
+document.addEventListener('pointerdown', e => {
+  const handle = e.target.closest('.setlist-handle');
+  if (handle) onSetlistHandleDown(e, handle);
+});
 
 function doSave(e) {
   e.preventDefault();

@@ -562,7 +562,30 @@ body {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  will-change: transform;
 }
+
+.setlist-item.dragging {
+  z-index: 50;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  border-bottom-color: transparent;
+  opacity: 0.98;
+}
+
+.setlist-handle {
+  cursor: grab;
+  touch-action: none;
+  padding: 0.3rem 0.2rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 0.9;
+  user-select: none;
+  letter-spacing: -3px;
+  flex-shrink: 0;
+}
+
+.setlist-handle:active { cursor: grabbing; color: var(--primary); }
 
 .setlist-num {
   width: 1.75rem;
@@ -584,27 +607,8 @@ body {
 
 .setlist-info .song-name { flex: 1; }
 
-.setlist-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex-shrink: 0;
-}
-
-.btn-move {
-  width: 2rem;
-  height: 2rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .btn-remove {
+  flex-shrink: 0;
   width: 2rem;
   height: 2rem;
   background: none;
@@ -619,7 +623,6 @@ body {
 }
 
 .btn-remove:hover { background: var(--danger-bg); }
-.btn-move-ph { width: 2rem; height: 2rem; flex-shrink: 0; }
 
 /* ── EDIT FORM ───────────────────────────────── */
 .edit-form {
