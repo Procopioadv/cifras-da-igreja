@@ -1,5 +1,5 @@
 // Bump a versão sempre que fizer deploy — invalida o cache antigo.
-const CACHE = 'cifras-v7';
+const CACHE = 'cifras-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,10 @@ const ASSETS = [
   './js/transposer.js',
   './js/data.js',
   './js/app.js',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', e => {
