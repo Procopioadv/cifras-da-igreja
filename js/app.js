@@ -17,6 +17,15 @@ function h(s) {
     .replace(/"/g, '&quot;');
 }
 
+// Escape para uso em string JS dentro de atributo HTML (onclick="foo('${jsEsc(id)}')")
+function jsEsc(s) {
+  return String(s || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e');
+}
+
 function go(view, params) {
   Object.assign(state, params || {}, { view });
   history.pushState({ ...state }, '');
@@ -154,7 +163,7 @@ function viewRepertorio() {
 
   const list = filtered.length
     ? filtered.map(s => `
-        <div class="song-item" onclick="go('song',{songId:'${s.id}',semitones:0})">
+        <div class="song-item" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
           <div class="song-item-body">
             <span class="song-name">${h(s.title)}</span>
             ${s.artist ? `<span class="song-sub">${h(s.artist)}</span>` : ''}
@@ -196,10 +205,10 @@ function viewSong() {
     <div class="header">
       <button class="btn-back" onclick="goBack()">&#8592; Voltar</button>
       <h1>${h(song.title)}</h1>
-      <button class="btn-icon ${inSL ? 'star-active' : ''}" onclick="toggleSetlist('${song.id}')" title="${inSL ? 'Remover do setlist' : 'Adicionar ao setlist'}">
+      <button class="btn-icon ${inSL ? 'star-active' : ''}" onclick="toggleSetlist('${jsEsc(song.id)}')" title="${inSL ? 'Remover do setlist' : 'Adicionar ao setlist'}">
         ${inSL ? '&#9733;' : '&#9734;'}
       </button>
-      <button class="btn-icon" onclick="go('edit',{editSong:Songs.get('${song.id}'),songId:'${song.id}'})" title="Editar">&#9998;</button>
+      <button class="btn-icon" onclick="doEditCurrentSong()" title="Editar">&#9998;</button>
     </div>
 
     <div class="song-meta">
@@ -229,7 +238,7 @@ function viewSong() {
         <option value="0" ${!song.capo ? 'selected' : ''}>Sem capotraste</option>
         ${[1,2,3,4,5,6,7,8,9,10,11].map(n => `<option value="${n}" ${song.capo == n ? 'selected' : ''}>Casa ${n}</option>`).join('')}
       </select>
-      <button class="btn-capo-save" onclick="doSalvarCapo('${song.id}')">&#128190; Salvar</button>
+      <button class="btn-capo-save" onclick="doSalvarCapo('${jsEsc(song.id)}')">&#128190; Salvar</button>
     </div>
 
     <div class="font-bar">
@@ -247,7 +256,7 @@ function viewSetlist() {
     ? songs.map((s, i) => `
         <div class="setlist-item">
           <span class="setlist-num">${i + 1}</span>
-          <div class="setlist-info" onclick="go('song',{songId:'${s.id}',semitones:0})">
+          <div class="setlist-info" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
             <span class="song-name">${h(s.title)}</span>
             ${s.key ? `<span class="badge badge-key">${h(s.key)}</span>` : ''}
           </div>
@@ -258,7 +267,7 @@ function viewSetlist() {
             ${i < songs.length - 1
               ? `<button class="btn-move" onclick="Setlist.move(${i},${i+1});renderMain()">&#8595;</button>`
               : '<span class="btn-move-ph"></span>'}
-            <button class="btn-remove" onclick="Setlist.remove('${s.id}');renderMain()">&#10005;</button>
+            <button class="btn-remove" onclick="Setlist.remove('${jsEsc(s.id)}');renderMain()">&#10005;</button>
           </div>
         </div>`).join('')
     : '<div class="empty-state">Setlist vazio<br><small>Adicione músicas pelo repertório usando &#9734;</small></div>';
@@ -315,7 +324,7 @@ function viewEdit() {
       <button type="button" class="btn-convert" onclick="doConvert()">&#8635; Converter formato Cifra Club</button>
 
       <div class="form-actions">
-        ${!isNew ? `<button type="button" class="btn-danger" onclick="doDelete('${song.id}')">Excluir</button>` : '<span></span>'}
+        ${!isNew ? `<button type="button" class="btn-danger" onclick="doDelete('${jsEsc(song.id)}')">Excluir</button>` : '<span></span>'}
         <button type="submit" class="btn-primary">Salvar</button>
       </div>
     </form>`;
@@ -407,6 +416,12 @@ function viewSettings() {
 }
 
 // ── ACTIONS ───────────────────────────────────
+
+function doEditCurrentSong() {
+  const song = Songs.get(state.songId);
+  if (!song) return;
+  go('edit', { editSong: song, songId: song.id });
+}
 
 function doTranspose(delta) {
   state.semitones += delta;
