@@ -761,6 +761,68 @@ body {
 
 .star-active { color: var(--star); }
 
+/* ── AUTO-SCROLL ─────────────────────────────── */
+.scroll-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-scroll {
+  flex: 1;
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.btn-scroll:active { opacity: 0.85; }
+
+.btn-scroll-adj {
+  width: 2rem;
+  height: 2rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-speed {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.btn-scroll-float {
+  width: 2.75rem;
+  height: 2.75rem;
+  background: rgba(22,163,74,0.85);
+  color: white;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.btn-scroll-float:active { background: rgba(21,128,61,0.95); }
+
 /* ── PRESENTATION MODE ───────────────────────── */
 .btn-tp.present {
   background: #7c3aed;
@@ -776,6 +838,7 @@ body.is-presenting .song-meta,
 body.is-presenting .transpose-bar,
 body.is-presenting .capo-bar,
 body.is-presenting .font-bar,
+body.is-presenting .scroll-bar,
 body.is-presenting #bottom-nav {
   display: none !important;
 }

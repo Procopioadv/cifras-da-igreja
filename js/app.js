@@ -11,6 +11,50 @@ const state = {
 
 let _wakeLock = null;
 
+// ── AUTO-SCROLL ───────────────────────────────
+const AutoScroll = {
+  _raf: null,
+  _last: 0,
+  _acc: 0,
+  active: false,
+  speed: Number(localStorage.getItem('cifras_scroll_speed')) || 30, // pixels/segundo
+  setSpeed(v) {
+    this.speed = Math.max(5, Math.min(120, v));
+    localStorage.setItem('cifras_scroll_speed', String(this.speed));
+  },
+  start() {
+    if (this.active) return;
+    this.active = true;
+    this._last = performance.now();
+    const step = now => {
+      if (!this.active) return;
+      const dt = (now - this._last) / 1000;
+      this._last = now;
+      this._acc += dt * this.speed;
+      const px = Math.floor(this._acc);
+      if (px > 0) {
+        this._acc -= px;
+        const before = window.scrollY;
+        window.scrollBy(0, px);
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (window.scrollY >= maxScroll - 1 || window.scrollY === before) {
+          this.stop();
+          return;
+        }
+      }
+      this._raf = requestAnimationFrame(step);
+    };
+    this._raf = requestAnimationFrame(step);
+  },
+  stop() {
+    this.active = false;
+    if (this._raf) cancelAnimationFrame(this._raf);
+    this._raf = null;
+    this._acc = 0;
+  },
+  toggle() { this.active ? this.stop() : this.start(); }
+};
+
 // ── UTILS ─────────────────────────────────────
 function h(s) {
   return String(s || '')
@@ -31,6 +75,7 @@ function jsEsc(s) {
 
 function go(view, params) {
   if (state.presenting && view !== 'song') doExitPresent();
+  if (view !== 'song') AutoScroll.stop();
   Object.assign(state, params || {}, { view });
   history.pushState({ ...state }, '');
   render();
@@ -251,10 +296,18 @@ function viewSong() {
       <button class="btn-font" onclick="changeFont(+1)">A+</button>
     </div>
 
+    <div class="scroll-bar">
+      <button class="btn-scroll" id="btn-scroll" onclick="doToggleScroll()">${AutoScroll.active ? '&#9724; Parar' : '&#9654; Auto-scroll'}</button>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(-5)" title="Mais lento">&#8722;</button>
+      <span class="scroll-speed" id="scroll-speed">${AutoScroll.speed}</span>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(+5)" title="Mais rápido">&#43;</button>
+    </div>
+
     <div class="song-content" id="sc">${content}</div>
     ${state.presenting ? `
       <button class="present-exit" onclick="doExitPresent()" title="Sair (Esc)">&#10005;</button>
       <div class="present-fontbar">
+        <button class="btn-scroll-float" onclick="doToggleScroll()" id="btn-scroll-float">${AutoScroll.active ? '&#9724;' : '&#9654;'}</button>
         <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
         <button class="btn-font" onclick="changeFont(+1)">A+</button>
       </div>` : ''}`;
@@ -466,6 +519,21 @@ function doExitPresent() {
   document.body.classList.remove('is-presenting');
   if (_wakeLock) { try { _wakeLock.release(); } catch {} _wakeLock = null; }
   renderMain();
+}
+
+function doToggleScroll() {
+  AutoScroll.toggle();
+  // Atualiza botões inline sem repintar a página inteira (evita perder posição)
+  const b1 = document.getElementById('btn-scroll');
+  const b2 = document.getElementById('btn-scroll-float');
+  if (b1) b1.innerHTML = AutoScroll.active ? '&#9724; Parar' : '&#9654; Auto-scroll';
+  if (b2) b2.innerHTML = AutoScroll.active ? '&#9724;' : '&#9654;';
+}
+
+function doAdjScroll(delta) {
+  AutoScroll.setSpeed(AutoScroll.speed + delta);
+  const s = document.getElementById('scroll-speed');
+  if (s) s.textContent = AutoScroll.speed;
 }
 
 // Se sair da tela da música por qualquer motivo, encerra apresentação
