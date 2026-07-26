@@ -56,11 +56,37 @@ const Cloud = {
       const res = await fetch(this.url, { cache: 'no-store' });
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.songs)) return { ok: false, reason: 'bad-response' };
-      // Mescla: nuvem prevalece, mantém setlist local
+
+      // Merge por id: quem tem updatedAt mais recente vence.
+      // Músicas só locais são preservadas e reenviadas para a nuvem.
       const local = _db();
-      local.songs = data.songs;
+      const localById = new Map(local.songs.map(s => [s.id, s]));
+      const cloudById = new Map(data.songs.map(s => [s.id, s]));
+      const merged = [];
+      const toPush = [];
+
+      const allIds = new Set([...localById.keys(), ...cloudById.keys()]);
+      for (const id of allIds) {
+        const l = localById.get(id);
+        const c = cloudById.get(id);
+        if (l && c) {
+          const lu = Number(l.updatedAt) || 0;
+          const cu = Number(c.updatedAt) || 0;
+          if (lu > cu) { merged.push(l); toPush.push(l); }
+          else { merged.push(c); }
+        } else if (l) {
+          merged.push(l);
+          toPush.push(l);
+        } else {
+          merged.push(c);
+        }
+      }
+
+      local.songs = merged;
       _save(local);
-      return { ok: true, count: data.songs.length };
+      toPush.forEach(song => Cloud.pushSave(song));
+
+      return { ok: true, count: merged.length, pushed: toPush.length };
     } catch(e) {
       return { ok: false, reason: e.message };
     }
