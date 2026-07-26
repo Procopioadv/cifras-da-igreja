@@ -187,6 +187,64 @@ body {
 
 .cat-select:focus { border-color: var(--primary); }
 
+/* ── FILTER BAR ──────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  align-items: center;
+}
+
+.filter-chip {
+  flex-shrink: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.filter-toggle {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-toggle.on {
+  background: var(--star);
+  color: #422006;
+  border-color: var(--star);
+}
+
+.filter-clear {
+  flex-shrink: 0;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 /* ── SONG LIST ───────────────────────────────── */
 .song-list { padding-bottom: 0.5rem; }
 

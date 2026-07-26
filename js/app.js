@@ -5,6 +5,9 @@ const state = {
   semitones: 0,
   search: '',
   category: '',
+  filterKey: '',
+  filterInSetlist: false,
+  sort: localStorage.getItem('cifras_sort') || 'title',
   editSong: null,
   presenting: false,
 };
@@ -247,15 +250,28 @@ const KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','Db','Eb','Gb
 // ── VIEWS ─────────────────────────────────────
 
 function viewRepertorio() {
-  const songs = Songs.all();
+  const all = Songs.all();
   const q = state.search.toLowerCase();
   const cat = state.category;
+  const filterKey = state.filterKey;
+  const activeSetlist = Setlist.active();
+  const setlistIds = new Set(activeSetlist?.songIds || []);
+  const usedKeys = [...new Set(all.map(s => s.key).filter(Boolean))].sort();
 
-  const filtered = songs.filter(s => {
+  let filtered = all.filter(s => {
     const mq = !q || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q);
     const mc = !cat || s.category === cat;
-    return mq && mc;
+    const mk = !filterKey || s.key === filterKey;
+    const ms = !state.filterInSetlist || setlistIds.has(s.id);
+    return mq && mc && mk && ms;
   });
+
+  // Ordenação
+  if (state.sort === 'updated')      filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  else if (state.sort === 'created') filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  else                               filtered.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+
+  const anyFilter = q || cat || filterKey || state.filterInSetlist || state.sort !== 'title';
 
   const list = filtered.length
     ? filtered.map(s => `
@@ -285,8 +301,24 @@ function viewRepertorio() {
         ${CATS.map(c => `<option value="${h(c)}" ${state.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
       </select>
     </div>
+    <div class="filter-bar">
+      <select class="filter-chip" onchange="state.filterKey=this.value;renderMain()" title="Filtrar por tom">
+        <option value="">Todos tons</option>
+        ${usedKeys.map(k => `<option value="${h(k)}" ${filterKey === k ? 'selected' : ''}>${h(k)}</option>`).join('')}
+      </select>
+      <select class="filter-chip" onchange="doChangeSort(this.value)" title="Ordenar">
+        <option value="title"   ${state.sort === 'title'   ? 'selected' : ''}>A → Z</option>
+        <option value="updated" ${state.sort === 'updated' ? 'selected' : ''}>Recém-editadas</option>
+        <option value="created" ${state.sort === 'created' ? 'selected' : ''}>Recém-adicionadas</option>
+      </select>
+      ${activeSetlist ? `
+      <button class="filter-toggle ${state.filterInSetlist ? 'on' : ''}" onclick="state.filterInSetlist=!state.filterInSetlist;renderMain()" title="Só do setlist ativo">
+        &#9733; ${h(activeSetlist.name)}
+      </button>` : ''}
+      ${anyFilter ? `<button class="filter-clear" onclick="doClearFilters()">Limpar</button>` : ''}
+    </div>
     <div class="song-list">${list}</div>
-    <div class="song-count">${filtered.length} música${filtered.length !== 1 ? 's' : ''}</div>`;
+    <div class="song-count">${filtered.length} de ${all.length} música${all.length !== 1 ? 's' : ''}</div>`;
 }
 
 function viewSong() {
@@ -728,6 +760,22 @@ function doDeleteSetlist(id) {
   if (!cur) return;
   if (!confirm(`Excluir o setlist "${cur.name}"? As músicas continuam no repertório.`)) return;
   Setlist.delete(id);
+  renderMain();
+}
+
+function doChangeSort(v) {
+  state.sort = v;
+  localStorage.setItem('cifras_sort', v);
+  renderMain();
+}
+
+function doClearFilters() {
+  state.search = '';
+  state.category = '';
+  state.filterKey = '';
+  state.filterInSetlist = false;
+  state.sort = 'title';
+  localStorage.setItem('cifras_sort', 'title');
   renderMain();
 }
 
