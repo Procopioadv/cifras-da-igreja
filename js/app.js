@@ -89,10 +89,21 @@ function goBack() {
 }
 
 // ── CHORD RENDERER ────────────────────────────
+const ChordFormat = {
+  get() { return localStorage.getItem('cifras_chord_format') || 'inline'; },
+  set(v) { localStorage.setItem('cifras_chord_format', v); },
+  toggle() { this.set(this.get() === 'inline' ? 'above' : 'inline'); }
+};
+
 function renderContent(rawContent, semitones) {
   const useFlats = detectFlats(rawContent);
   const content = transposeContent(rawContent, semitones, useFlats);
+  return ChordFormat.get() === 'above'
+    ? renderContentAbove(content)
+    : renderContentInline(content);
+}
 
+function renderContentInline(content) {
   return content.split('\n').map(line => {
     if (!line.trim() && !line.includes('[')) {
       return '<span class="s-empty"></span>';
@@ -112,6 +123,42 @@ function renderContent(rawContent, semitones) {
       }
     }
     return `<span class="s-line">${html}</span>`;
+  }).join('');
+}
+
+// Formato tradicional: cifras em linha própria acima da letra, alinhadas por posição
+function renderContentAbove(content) {
+  return content.split('\n').map(line => {
+    if (!line.trim() && !line.includes('[')) {
+      return '<span class="s-empty"></span>';
+    }
+    if (!line.includes('[')) {
+      return `<span class="s-line-trad">${h(line) || '&nbsp;'}</span>`;
+    }
+
+    // Reconstrói duas linhas: cifras (com espaços onde estava a letra) e letra pura
+    let chordRow = '';
+    let lyricRow = '';
+    const parts = line.split(/(\[[^\]]+\])/);
+    for (const part of parts) {
+      if (part.startsWith('[') && part.endsWith(']')) {
+        const chord = part.slice(1, -1);
+        // Se a cifra ficaria em cima de outra cifra, força um espaço para não colar
+        if (chordRow.length <= lyricRow.length) {
+          chordRow += ' '.repeat(lyricRow.length - chordRow.length) + chord;
+        } else {
+          chordRow += ' ' + chord;
+        }
+      } else {
+        lyricRow += part;
+      }
+    }
+    // Se a linha da letra é mais curta que a das cifras, completa com espaços para não quebrar layout
+    if (lyricRow.length < chordRow.length) {
+      lyricRow += ' '.repeat(chordRow.length - lyricRow.length);
+    }
+    return `<span class="s-chord-row">${h(chordRow).replace(/ /g, '&nbsp;')}</span>` +
+           `<span class="s-lyric-row">${h(lyricRow).replace(/ /g, '&nbsp;') || '&nbsp;'}</span>`;
   }).join('');
 }
 
@@ -292,6 +339,7 @@ function viewSong() {
 
     <div class="font-bar">
       <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250; Apresentar</button>
+      <button class="btn-format" onclick="doToggleFormat()" title="Alternar formato">${ChordFormat.get() === 'above' ? '&#8942; Sobre' : '&#8801; Acima'}</button>
       <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
       <button class="btn-font" onclick="changeFont(+1)">A+</button>
     </div>
@@ -534,6 +582,11 @@ function doAdjScroll(delta) {
   AutoScroll.setSpeed(AutoScroll.speed + delta);
   const s = document.getElementById('scroll-speed');
   if (s) s.textContent = AutoScroll.speed;
+}
+
+function doToggleFormat() {
+  ChordFormat.toggle();
+  renderMain();
 }
 
 // Se sair da tela da música por qualquer motivo, encerra apresentação

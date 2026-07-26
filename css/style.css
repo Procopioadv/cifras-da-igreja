@@ -399,6 +399,42 @@ body {
   white-space: nowrap;
 }
 
+/* Formato tradicional: cifras acima da letra, monospace para alinhar */
+.s-chord-row, .s-lyric-row, .s-line-trad {
+  display: block;
+  font-family: 'Courier New', Courier, monospace;
+  white-space: pre;
+  line-height: 1.35;
+  word-break: normal;
+}
+
+.s-chord-row {
+  color: var(--chord);
+  font-weight: 700;
+  margin-top: 0.35em;
+}
+
+.s-lyric-row {
+  margin-bottom: 0.15em;
+}
+
+.s-line-trad {
+  margin-bottom: 0.15em;
+}
+
+.btn-format {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.btn-format:active { opacity: 0.85; }
+
 /* ── SETLIST ─────────────────────────────────── */
 .setlist-list { padding-bottom: 0.5rem; }
 
