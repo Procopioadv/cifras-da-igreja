@@ -6,7 +6,10 @@ const state = {
   search: '',
   category: '',
   editSong: null,
+  presenting: false,
 };
+
+let _wakeLock = null;
 
 // ── UTILS ─────────────────────────────────────
 function h(s) {
@@ -27,6 +30,7 @@ function jsEsc(s) {
 }
 
 function go(view, params) {
+  if (state.presenting && view !== 'song') doExitPresent();
   Object.assign(state, params || {}, { view });
   history.pushState({ ...state }, '');
   render();
@@ -242,11 +246,18 @@ function viewSong() {
     </div>
 
     <div class="font-bar">
+      <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250; Apresentar</button>
       <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
       <button class="btn-font" onclick="changeFont(+1)">A+</button>
     </div>
 
-    <div class="song-content" id="sc">${content}</div>`;
+    <div class="song-content" id="sc">${content}</div>
+    ${state.presenting ? `
+      <button class="present-exit" onclick="doExitPresent()" title="Sair (Esc)">&#10005;</button>
+      <div class="present-fontbar">
+        <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
+        <button class="btn-font" onclick="changeFont(+1)">A+</button>
+      </div>` : ''}`;
 }
 
 function viewSetlist() {
@@ -439,6 +450,34 @@ function doSetTheme(mode) {
   Theme.set(mode);
   renderMain();
 }
+
+async function doEnterPresent() {
+  state.presenting = true;
+  document.body.classList.add('is-presenting');
+  renderMain();
+  if ('wakeLock' in navigator) {
+    try { _wakeLock = await navigator.wakeLock.request('screen'); }
+    catch {}
+  }
+}
+
+function doExitPresent() {
+  state.presenting = false;
+  document.body.classList.remove('is-presenting');
+  if (_wakeLock) { try { _wakeLock.release(); } catch {} _wakeLock = null; }
+  renderMain();
+}
+
+// Se sair da tela da música por qualquer motivo, encerra apresentação
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && state.presenting && !_wakeLock && 'wakeLock' in navigator) {
+    try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && state.presenting) doExitPresent();
+});
 
 function doTranspose(delta) {
   state.semitones += delta;

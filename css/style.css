@@ -760,3 +760,79 @@ body {
 }
 
 .star-active { color: var(--star); }
+
+/* ── PRESENTATION MODE ───────────────────────── */
+.btn-tp.present {
+  background: #7c3aed;
+}
+
+body.is-presenting {
+  padding-bottom: 0;
+  background: var(--surface);
+}
+
+body.is-presenting .header,
+body.is-presenting .song-meta,
+body.is-presenting .transpose-bar,
+body.is-presenting .capo-bar,
+body.is-presenting .font-bar,
+body.is-presenting #bottom-nav {
+  display: none !important;
+}
+
+body.is-presenting #main { max-width: 100%; }
+
+body.is-presenting .song-content {
+  padding: 1.5rem 1.25rem 6rem;
+  font-size: 1.35rem;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+body.is-presenting .s-line { line-height: 2.6; }
+body.is-presenting .s-chord { font-size: 0.75em; }
+
+.present-exit {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  right: 1rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.present-exit:active { background: rgba(0,0,0,0.8); }
+
+.present-fontbar {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  right: 1rem;
+  display: flex;
+  gap: 0.4rem;
+  z-index: 200;
+}
+
+.present-fontbar .btn-font {
+  width: 2.75rem;
+  height: 2.75rem;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.present-fontbar .btn-font:active { background: rgba(0,0,0,0.8); }
