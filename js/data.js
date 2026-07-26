@@ -214,6 +214,17 @@ const Cloud = {
     }
   },
 
+  async backup() {
+    if (!this.url) return { ok: false, reason: 'not-configured' };
+    const data = JSON.parse(Storage.export());
+    try {
+      const res = await this._send({ action: 'backup', data });
+      return await res.json();
+    } catch(e) {
+      return { ok: false, reason: e.message };
+    }
+  },
+
   async pushSetlists(setlists, updatedAt) {
     if (!this.url) return;
     this._setState('syncing');

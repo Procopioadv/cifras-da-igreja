@@ -93,10 +93,33 @@ function doPost(e) {
     if (body.action === 'save')     return out(saveSong(body.song));
     if (body.action === 'delete')   return out(deleteSong(body.id));
     if (body.action === 'setlists') return out(saveSetlists(body));
+    if (body.action === 'backup')   return out(doBackup(body));
     return out({ ok: false, error: 'ação inválida' });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
+}
+
+function getBackupFolder() {
+  const name = 'Cifras Backups';
+  const it = DriveApp.getFoldersByName(name);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(name);
+}
+
+function doBackup(body) {
+  const data = body.data || {};
+  if (!Array.isArray(data.songs)) return { ok: false, error: 'dados inválidos' };
+  const folder = getBackupFolder();
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT-3', 'yyyy-MM-dd_HH-mm');
+  const name = `cifras-backup-${stamp}.json`;
+  const file = folder.createFile(name, JSON.stringify(data), 'application/json');
+  // Mantém no máximo 30 backups (remove os mais antigos)
+  const files = [];
+  const iter = folder.getFilesByType('application/json');
+  while (iter.hasNext()) files.push(iter.next());
+  files.sort((a, b) => b.getDateCreated() - a.getDateCreated());
+  files.slice(30).forEach(f => f.setTrashed(true));
+  return { ok: true, name, id: file.getId(), url: file.getUrl(), total: Math.min(files.length, 30) };
 }
 
 function saveSetlists(body) {

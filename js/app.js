@@ -564,6 +564,14 @@ function viewSettings() {
       <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
     </div>
 
+    ${cloudOk ? `
+    <div class="settings-section">
+      <h3>&#128190; Backup no Google Drive</h3>
+      <p style="margin-bottom:0.5rem">${backupStatus()}</p>
+      <button class="btn-setting" onclick="doBackupNow()">&#128190; Fazer backup agora</button>
+      <p style="font-size:0.8rem;color:var(--muted)">Backup automático a cada 7 dias. Guarda os 30 mais recentes na pasta <strong>Cifras Backups</strong> do seu Drive.</p>
+    </div>` : ''}
+
     <div class="settings-section">
       <h3>Instalar no iPhone / iPad</h3>
       <p>No Safari: toque em <strong>Compartilhar &#9633;&#8593;</strong> → <strong>Adicionar à Tela de Início</strong>.</p>
@@ -721,6 +729,36 @@ function doDeleteSetlist(id) {
   if (!confirm(`Excluir o setlist "${cur.name}"? As músicas continuam no repertório.`)) return;
   Setlist.delete(id);
   renderMain();
+}
+
+function backupStatus() {
+  const last = Number(localStorage.getItem('cifras_last_backup') || 0);
+  if (!last) return '&#9898; Ainda não fizemos backup manual.';
+  const days = Math.floor((Date.now() - last) / 86400000);
+  const when = new Date(last).toLocaleString('pt-BR');
+  return `&#9989; Último backup: ${when} (${days === 0 ? 'hoje' : days === 1 ? 'ontem' : `${days} dias atrás`}).`;
+}
+
+async function doBackupNow() {
+  const btn = document.querySelector('[onclick="doBackupNow()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  const res = await Cloud.backup();
+  if (res.ok) {
+    localStorage.setItem('cifras_last_backup', String(Date.now()));
+    alert(`✅ Backup criado: ${res.name}\n(${res.total || '?'} backups mantidos na pasta)`);
+  } else {
+    alert('❌ Falha no backup: ' + (res.reason || res.error || 'erro'));
+  }
+  renderMain();
+}
+
+async function autoBackupIfDue() {
+  if (!Cloud.isConfigured() || !navigator.onLine) return;
+  const last = Number(localStorage.getItem('cifras_last_backup') || 0);
+  const week = 7 * 24 * 60 * 60 * 1000;
+  if (Date.now() - last < week) return;
+  const res = await Cloud.backup();
+  if (res?.ok) localStorage.setItem('cifras_last_backup', String(Date.now()));
 }
 
 async function doShareSetlist() {
@@ -1080,7 +1118,7 @@ async function init() {
 
   // Sincroniza com nuvem se configurado (sem bloquear a UI)
   if (Cloud.isConfigured() && navigator.onLine) {
-    Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
+    Cloud.pull().then(r => { if (r.ok) { renderMain(); autoBackupIfDue(); } }).catch(() => {});
   }
 
   // Atualiza header e tela de configurações em tempo real quando o status da nuvem muda
