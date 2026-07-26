@@ -662,6 +662,13 @@ window.addEventListener('popstate', e => {
 async function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Recarrega automaticamente quando um novo SW assumir controle
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
   }
 
   // Sincroniza com nuvem se configurado (sem bloquear a UI)
