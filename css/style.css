@@ -10,6 +10,60 @@
   --muted: #64748b;
   --chord: #2563eb;
   --danger: #dc2626;
+  --hover: #f8fafc;
+  --active: #f1f5f9;
+  --input-bg: #ffffff;
+  --hint-bg: #f8fafc;
+  --settings-code-bg: #f1f5f9;
+  --shadow-nav: 0 -2px 12px rgba(0,0,0,0.07);
+  --danger-bg: #fee2e2;
+  --star: #f59e0b;
+  color-scheme: light;
+}
+
+/* Modo escuro: aciona por preferência do sistema OU por data-theme="dark" */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --chord: #60a5fa;
+    --danger: #f87171;
+    --hover: #263449;
+    --active: #2d3b52;
+    --input-bg: #0f172a;
+    --hint-bg: #0f172a;
+    --settings-code-bg: #0f172a;
+    --shadow-nav: 0 -2px 12px rgba(0,0,0,0.5);
+    --danger-bg: #451a1f;
+    --star: #fbbf24;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --chord: #60a5fa;
+  --danger: #f87171;
+  --hover: #263449;
+  --active: #2d3b52;
+  --input-bg: #0f172a;
+  --hint-bg: #0f172a;
+  --settings-code-bg: #0f172a;
+  --shadow-nav: 0 -2px 12px rgba(0,0,0,0.5);
+  --danger-bg: #451a1f;
+  --star: #fbbf24;
+  color-scheme: dark;
 }
 
 html, body {
@@ -118,7 +172,7 @@ body {
   background: var(--bg);
 }
 
-.search-input:focus { border-color: var(--primary); background: white; }
+.search-input:focus { border-color: var(--primary); background: var(--surface); }
 
 .cat-select {
   max-width: 130px;
@@ -147,8 +201,8 @@ body {
   user-select: none;
 }
 
-.song-item:hover { background: #f8fafc; }
-.song-item:active { background: #f1f5f9; }
+.song-item:hover { background: var(--hover); }
+.song-item:active { background: var(--active); }
 
 .song-item-body { flex: 1; min-width: 0; }
 
@@ -411,7 +465,7 @@ body {
   border-radius: 6px;
 }
 
-.btn-remove:hover { background: #fee2e2; }
+.btn-remove:hover { background: var(--danger-bg); }
 .btn-move-ph { width: 2rem; height: 2rem; flex-shrink: 0; }
 
 /* ── EDIT FORM ───────────────────────────────── */
@@ -442,7 +496,7 @@ body {
   font-family: inherit;
   outline: none;
   width: 100%;
-  background: white;
+  background: var(--input-bg);
   color: var(--text);
 }
 
@@ -464,7 +518,7 @@ body {
   text-transform: none;
   letter-spacing: 0;
   color: var(--muted);
-  background: #f8fafc;
+  background: var(--hint-bg);
   padding: 0.5rem 0.625rem;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -538,7 +592,7 @@ body {
 }
 
 .settings-section code {
-  background: #f1f5f9;
+  background: var(--settings-code-bg);
   padding: 0.1em 0.35em;
   border-radius: 4px;
   font-size: 0.9em;
@@ -561,7 +615,31 @@ body {
   text-align: left;
 }
 
-.btn-setting:hover { background: #e2e8f0; }
+.btn-setting:hover { background: var(--border); }
+
+.theme-picker {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.theme-btn {
+  flex: 1;
+  padding: 0.7rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.theme-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
 
 /* ── BOTTOM NAV ──────────────────────────────── */
 #bottom-nav {
@@ -574,7 +652,7 @@ body {
   border-top: 1px solid var(--border);
   display: flex;
   z-index: 100;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  box-shadow: var(--shadow-nav);
 }
 
 .nav-btn {
@@ -647,8 +725,8 @@ body {
   gap: 0.75rem;
 }
 
-.result-item:hover { background: #f8fafc; }
-.result-item:active { background: #f1f5f9; }
+.result-item:hover { background: var(--hover); }
+.result-item:active { background: var(--active); }
 
 .result-item-body { flex: 1; min-width: 0; }
 
@@ -665,7 +743,7 @@ body {
 }
 
 .import-loading-box {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem 2rem;
   text-align: center;
@@ -681,4 +759,4 @@ body {
   line-height: 2;
 }
 
-.star-active { color: #f59e0b; }
+.star-active { color: var(--star); }

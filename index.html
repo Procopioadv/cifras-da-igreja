@@ -11,6 +11,13 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Aplica tema salvo antes do CSS carregar (evita flash de tela clara)
+    (function() {
+      var t = localStorage.getItem('cifras_theme') || 'auto';
+      if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body>
   <div id="main"></div>

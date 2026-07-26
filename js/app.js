@@ -393,6 +393,18 @@ function viewSettings() {
     </div>
 
     <div class="settings-section">
+      <h3>&#9789; Aparência</h3>
+      <div class="theme-picker">
+        ${['auto','light','dark'].map(m => `
+          <button class="theme-btn ${Theme.get() === m ? 'active' : ''}" onclick="doSetTheme('${m}')">
+            ${m === 'auto' ? '&#128241; Auto' : m === 'light' ? '&#9728;&#65039; Claro' : '&#127769; Escuro'}
+          </button>
+        `).join('')}
+      </div>
+      <p style="margin-top:0.5rem;font-size:0.8rem">Auto segue a preferência do sistema.</p>
+    </div>
+
+    <div class="settings-section">
       <h3>Repertório</h3>
       <p>${count} música${count !== 1 ? 's' : ''} cadastrada${count !== 1 ? 's' : ''}</p>
     </div>
@@ -421,6 +433,11 @@ function doEditCurrentSong() {
   const song = Songs.get(state.songId);
   if (!song) return;
   go('edit', { editSong: song, songId: song.id });
+}
+
+function doSetTheme(mode) {
+  Theme.set(mode);
+  renderMain();
 }
 
 function doTranspose(delta) {
@@ -660,6 +677,14 @@ window.addEventListener('popstate', e => {
 });
 
 async function init() {
+  Theme.apply();
+  // Se estiver em modo auto, atualiza quando o sistema mudar
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (Theme.get() === 'auto') Theme.apply();
+    });
+  }
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
     // Recarrega automaticamente quando um novo SW assumir controle

@@ -254,6 +254,30 @@ const Setlist = {
   }
 };
 
+// ── TEMA (light / dark / auto) ────────────────
+const Theme = {
+  get() { return localStorage.getItem('cifras_theme') || 'auto'; },
+  set(mode) {
+    localStorage.setItem('cifras_theme', mode);
+    this.apply();
+  },
+  apply() {
+    const mode = this.get();
+    const root = document.documentElement;
+    if (mode === 'auto') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', mode);
+    }
+    // Atualiza a barra de status do celular pra combinar
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      meta.setAttribute('content', dark ? '#1e293b' : '#4338ca');
+    }
+  }
+};
+
 const Storage = {
   export() { return JSON.stringify(_db(), null, 2); },
   import(json) {
