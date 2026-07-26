@@ -18,6 +18,11 @@
   --shadow-nav: 0 -2px 12px rgba(0,0,0,0.07);
   --danger-bg: #fee2e2;
   --star: #f59e0b;
+  --sec-refrao:  #dc2626;
+  --sec-ponte:   #2563eb;
+  --sec-solo:    #ea580c;
+  --sec-neutral: #64748b;
+  --sec-custom:  #7c3aed;
   color-scheme: light;
 }
 
@@ -41,6 +46,11 @@
     --shadow-nav: 0 -2px 12px rgba(0,0,0,0.5);
     --danger-bg: #451a1f;
     --star: #fbbf24;
+    --sec-refrao:  #f87171;
+    --sec-ponte:   #60a5fa;
+    --sec-solo:    #fb923c;
+    --sec-neutral: #94a3b8;
+    --sec-custom:  #a78bfa;
     color-scheme: dark;
   }
 }
@@ -63,6 +73,11 @@
   --shadow-nav: 0 -2px 12px rgba(0,0,0,0.5);
   --danger-bg: #451a1f;
   --star: #fbbf24;
+  --sec-refrao:  #f87171;
+  --sec-ponte:   #60a5fa;
+  --sec-solo:    #fb923c;
+  --sec-neutral: #94a3b8;
+  --sec-custom:  #a78bfa;
   color-scheme: dark;
 }
 
@@ -617,6 +632,73 @@ body {
 .s-line-trad {
   margin-bottom: 0.15em;
 }
+
+/* ── SEÇÕES COLORIDAS (# Refrão, # Ponte, ...) ── */
+.s-section { margin: 0.5em 0; }
+.s-section-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.35em;
+  background: rgba(0, 0, 0, 0.05);
+  color: inherit;
+}
+[data-theme="dark"] .s-section-label { background: rgba(255, 255, 255, 0.08); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .s-section-label { background: rgba(255, 255, 255, 0.08); }
+}
+
+/* Aplica a cor da seção ao bloco inteiro (letra + cifras) */
+.s-section.sec-refrao   { color: var(--sec-refrao); }
+.s-section.sec-ponte    { color: var(--sec-ponte); }
+.s-section.sec-solo     { color: var(--sec-solo); }
+.s-section.sec-neutral  { color: var(--sec-neutral); }
+.s-section.sec-custom   { color: var(--sec-custom); }
+
+/* Cifras dentro de seções coloridas herdam a cor (em vez do azul padrão) */
+.s-section.sec-refrao .s-chord,   .s-section.sec-refrao .s-chord-row,
+.s-section.sec-ponte .s-chord,    .s-section.sec-ponte .s-chord-row,
+.s-section.sec-solo .s-chord,     .s-section.sec-solo .s-chord-row,
+.s-section.sec-neutral .s-chord,  .s-section.sec-neutral .s-chord-row,
+.s-section.sec-custom .s-chord,   .s-section.sec-custom .s-chord-row {
+  color: inherit;
+}
+
+/* ── TOOLBAR DE SEÇÕES NO EDITOR ── */
+.section-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0.35rem 0;
+}
+.section-toolbar-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-right: 0.15rem;
+}
+.btn-section {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-section.sec-refrao   { color: var(--sec-refrao); }
+.btn-section.sec-ponte    { color: var(--sec-ponte); }
+.btn-section.sec-solo     { color: var(--sec-solo); }
+.btn-section.sec-intro,
+.btn-section.sec-final    { color: var(--sec-neutral); }
+.btn-section:active { background: rgba(0, 0, 0, 0.05); }
+[data-theme="dark"] .btn-section:active { background: rgba(255, 255, 255, 0.08); }
 
 .btn-format {
   background: #7c3aed;

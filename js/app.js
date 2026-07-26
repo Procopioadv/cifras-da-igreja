@@ -99,12 +99,58 @@ const ChordFormat = {
   toggle() { this.set(this.get() === 'inline' ? 'above' : 'inline'); }
 };
 
+// ── SEÇÕES COLORIDAS (# Refrão, # Ponte, ...) ──
+const SECTION_MAP = {
+  'refrão':  { cls: 'sec-refrao',   label: 'Refrão' },
+  'refrao':  { cls: 'sec-refrao',   label: 'Refrão' },
+  'ponte':   { cls: 'sec-ponte',    label: 'Ponte' },
+  'solo':    { cls: 'sec-solo',     label: 'Solo' },
+  'intro':   { cls: 'sec-neutral',  label: 'Intro' },
+  'introducao': { cls: 'sec-neutral', label: 'Introdução' },
+  'introdução': { cls: 'sec-neutral', label: 'Introdução' },
+  'final':   { cls: 'sec-neutral',  label: 'Final' },
+  'coda':    { cls: 'sec-neutral',  label: 'Coda' },
+  'verso':   { cls: '',             label: 'Verso' },
+  'estrofe': { cls: '',             label: 'Estrofe' }
+};
+const SECTION_QUICK = ['Refrão', 'Ponte', 'Solo', 'Intro', 'Final'];
+
+function sectionInfo(name) {
+  const trimmed = name.trim();
+  const key = trimmed.toLowerCase();
+  return SECTION_MAP[key] || { cls: 'sec-custom', label: trimmed };
+}
+
+// Retorna [{info: {cls,label}|null, lines: [...] }]
+function parseSections(content) {
+  const sections = [];
+  let current = { info: null, lines: [] };
+  content.split('\n').forEach(line => {
+    const m = line.match(/^#\s*(.+?)\s*$/);
+    if (m) {
+      // Fecha o bloco atual e começa novo
+      sections.push(current);
+      current = { info: sectionInfo(m[1]), lines: [] };
+    } else {
+      current.lines.push(line);
+    }
+  });
+  sections.push(current);
+  return sections;
+}
+
 function renderContent(rawContent, semitones) {
   const useFlats = detectFlats(rawContent);
   const content = transposeContent(rawContent, semitones, useFlats);
-  return ChordFormat.get() === 'above'
-    ? renderContentAbove(content)
-    : renderContentInline(content);
+  const above = ChordFormat.get() === 'above';
+  const sections = parseSections(content);
+  return sections.map(s => {
+    const inner = above ? renderContentAbove(s.lines.join('\n')) : renderContentInline(s.lines.join('\n'));
+    if (!s.info && !inner.trim()) return '';
+    const label = s.info ? `<div class="s-section-label ${s.info.cls}">${h(s.info.label)}</div>` : '';
+    const cls = s.info ? `s-section ${s.info.cls}` : 's-section';
+    return `<div class="${cls}">${label}${inner}</div>`;
+  }).join('');
 }
 
 function renderContentInline(content) {
@@ -534,8 +580,12 @@ function viewEdit() {
         Letra com Cifras
         <span class="form-hint">
           &#128161; Cole direto do <strong>Cifra Club</strong> e clique em "Converter" &#8594; o app ajusta automaticamente.<br>
-          Ou escreva no formato: <code>[C]palavra [G]outra</code>
+          Ou escreva no formato: <code>[C]palavra [G]outra</code>. Use <code># Refrão</code> no início de um bloco para colorir.
         </span>
+        <div class="section-toolbar">
+          <span class="section-toolbar-label">Marcar seção:</span>
+          ${SECTION_QUICK.map(n => `<button type="button" class="btn-section sec-${n.toLowerCase().replace('ã','a')}" onclick="insertSection('${jsEsc(n)}')">+ ${h(n)}</button>`).join('')}
+        </div>
         <textarea class="form-textarea" id="ta-content" name="content" placeholder="Cole aqui a letra copiada do Cifra Club e clique em Converter&#10;&#10;Ou escreva direto:&#10;[C]Senhor, [G]eu preciso de ti&#10;[Am]Venho a tua [F]presença">${h(song.content)}</textarea>
       </label>
       <button type="button" class="btn-convert" onclick="doConvert()">&#8635; Converter formato Cifra Club</button>
@@ -947,6 +997,17 @@ function doPrintSetlist() {
   const today = new Date().toLocaleDateString('pt-BR');
   const escape = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const chordify = c => escape(c).replace(/\[([^\]]+)\]/g, '<b class="ch">[$1]</b>');
+  const SEC_COLORS = { 'sec-refrao': '#dc2626', 'sec-ponte': '#2563eb', 'sec-solo': '#ea580c', 'sec-neutral': '#64748b', 'sec-custom': '#7c3aed' };
+  const renderPrintContent = content => parseSections(content).map(sec => {
+    const inner = chordify(sec.lines.join('\n'));
+    if (!sec.info && !inner.trim()) return '';
+    if (!sec.info) return `<div class="sec">${inner}</div>`;
+    const color = SEC_COLORS[sec.info.cls] || '';
+    const style = color ? ` style="color:${color}"` : '';
+    return `<div class="sec"${style}>
+      <div class="sec-lbl"${style}>${escape(sec.info.label)}</div>${inner}
+    </div>`;
+  }).join('');
   const body = songs.map((s, i) => `
     <section class="song">
       <div class="hd">
@@ -956,7 +1017,7 @@ function doPrintSetlist() {
       </div>
       ${s.artist ? `<div class="ar">${escape(s.artist)}</div>` : ''}
       ${s.notes ? `<div class="nt">${escape(s.notes)}</div>` : ''}
-      <pre>${chordify(s.content || '')}</pre>
+      <pre>${renderPrintContent(s.content || '')}</pre>
     </section>`).join('');
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escape(sl.name)}</title>
     <style>
@@ -973,6 +1034,9 @@ function doPrintSetlist() {
       .nt { background: #fef3c7; border-left: 3px solid #f59e0b; padding: 0.4rem 0.6rem; margin: 0.5rem 0; font-size: 0.85rem; border-radius: 4px; }
       pre { font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; margin-top: 0.75rem; }
       .ch { color: #2563eb; font-weight: 700; }
+      .sec { margin: 0.4rem 0; }
+      .sec .ch { color: inherit; }
+      .sec-lbl { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem; }
       @media print { body { padding: 0.5rem; } .song { border: none; } }
     </style></head>
     <body>
@@ -1194,6 +1258,25 @@ function doConvert() {
   if (!ta) return;
   const converted = convertCifraClub(ta.value);
   ta.value = converted;
+  ta.focus();
+}
+
+function insertSection(name) {
+  const ta = document.getElementById('ta-content');
+  if (!ta) return;
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  const before = ta.value.slice(0, start);
+  const after  = ta.value.slice(end);
+  // Garante que o marcador começa em linha própria e é seguido por linha em branco
+  const needsNlBefore = before && !before.endsWith('\n');
+  const needsBlankBefore = before && !before.endsWith('\n\n') && !needsNlBefore;
+  const prefix = needsNlBefore ? '\n\n' : (needsBlankBefore ? '\n' : '');
+  const suffix = after.startsWith('\n') ? '' : '\n';
+  const insertion = prefix + '# ' + name + '\n' + suffix;
+  ta.value = before + insertion + after;
+  const caret = before.length + insertion.length;
+  ta.setSelectionRange(caret, caret);
   ta.focus();
 }
 
