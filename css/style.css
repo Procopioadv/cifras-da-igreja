@@ -436,6 +436,97 @@ body {
 .btn-format:active { opacity: 0.85; }
 
 /* ── SETLIST ─────────────────────────────────── */
+.setlist-tabs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.setlist-tab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.setlist-tab.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.setlist-tab-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(0,0,0,0.15);
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+}
+
+.setlist-tab.active .setlist-tab-count { background: rgba(255,255,255,0.25); }
+
+.setlist-tab-add {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.setlist-tab-add:hover { border-color: var(--primary); color: var(--primary); }
+
+.setlist-manage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.setlist-name {
+  flex: 1;
+  font-weight: 700;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-slman {
+  width: 2rem;
+  height: 2rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-slman:hover { background: var(--hover); }
+
 .setlist-list { padding-bottom: 0.5rem; }
 
 .setlist-item {

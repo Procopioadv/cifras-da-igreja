@@ -1,13 +1,36 @@
 const DB_KEY = 'cifras_db_v1';
 
+function _uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function _migrate(d) {
+  d.songs = d.songs || [];
+  d.setlists = Array.isArray(d.setlists) ? d.setlists : [];
+  // Migra formato antigo (setlist único) para setlists múltiplos
+  if (d.setlists.length === 0 && Array.isArray(d.setlist) && d.setlist.length > 0) {
+    const now = Date.now();
+    d.setlists.push({
+      id: _uid(),
+      name: 'Setlist',
+      songIds: d.setlist,
+      updatedAt: d.setlistUpdatedAt || now,
+      createdAt: now
+    });
+    d.setlistsUpdatedAt = d.setlistUpdatedAt || now;
+  }
+  delete d.setlist;
+  delete d.setlistUpdatedAt;
+  if (d.setlists.length > 0 && !d.setlists.some(sl => sl.id === d.activeSetlistId)) {
+    d.activeSetlistId = d.setlists[0].id;
+  }
+  return d;
+}
+
 function _db() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY)) || { songs: [], setlist: [] }; }
-  catch { return { songs: [], setlist: [] }; }
+  try { return _migrate(JSON.parse(localStorage.getItem(DB_KEY)) || {}); }
+  catch { return _migrate({}); }
 }
 
 function _save(data) { localStorage.setItem(DB_KEY, JSON.stringify(data)); }
-
-function _uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
 const Songs = {
   all() {
@@ -38,9 +61,17 @@ const Songs = {
   delete(id) {
     const data = _db();
     data.songs = data.songs.filter(s => s.id !== id);
-    data.setlist = (data.setlist || []).filter(sid => sid !== id);
+    let setlistsChanged = false;
+    const now = Date.now();
+    data.setlists.forEach(sl => {
+      const before = sl.songIds.length;
+      sl.songIds = sl.songIds.filter(sid => sid !== id);
+      if (sl.songIds.length !== before) { sl.updatedAt = now; setlistsChanged = true; }
+    });
+    if (setlistsChanged) data.setlistsUpdatedAt = now;
     _save(data);
     Cloud.pushDelete(id);
+    if (setlistsChanged) Cloud.pushSetlists(data.setlists, data.setlistsUpdatedAt);
   }
 };
 
@@ -74,13 +105,13 @@ const Cloud = {
   _enqueue(action) {
     const q = this._queue();
     let filtered;
-    if (action.type === 'setlist') {
-      // Setlist: só a última versão importa
-      filtered = q.filter(a => a.type !== 'setlist');
+    if (action.type === 'setlists') {
+      // Setlists: só a última versão do array importa
+      filtered = q.filter(a => a.type !== 'setlists');
     } else {
       // Save/delete: última ação para o mesmo id vence
       const targetId = action.song?.id || action.id;
-      filtered = q.filter(a => a.type === 'setlist' || (a.song?.id || a.id) !== targetId);
+      filtered = q.filter(a => a.type === 'setlists' || (a.song?.id || a.id) !== targetId);
     }
     filtered.push(action);
     this._saveQueue(filtered);
@@ -133,15 +164,18 @@ const Cloud = {
 
       local.songs = merged;
 
-      // Merge do setlist: quem tem updatedAt maior vence
-      const cloudSetlist = Array.isArray(data.setlist) ? data.setlist : null;
-      const cloudSetlistUpdatedAt = Number(data.setlistUpdatedAt) || 0;
-      const localSetlistUpdatedAt = Number(local.setlistUpdatedAt) || 0;
-      if (cloudSetlist && cloudSetlistUpdatedAt >= localSetlistUpdatedAt) {
-        local.setlist = cloudSetlist;
-        local.setlistUpdatedAt = cloudSetlistUpdatedAt;
-      } else if (localSetlistUpdatedAt > cloudSetlistUpdatedAt) {
-        Cloud._enqueue({ type: 'setlist', ids: local.setlist || [], updatedAt: localSetlistUpdatedAt });
+      // Merge dos setlists múltiplos: quem tem setlistsUpdatedAt maior vence (array inteiro)
+      const cloudSetlists = Array.isArray(data.setlists) ? data.setlists : null;
+      const cloudSetlistsUpdatedAt = Number(data.setlistsUpdatedAt) || 0;
+      const localSetlistsUpdatedAt = Number(local.setlistsUpdatedAt) || 0;
+      if (cloudSetlists && cloudSetlistsUpdatedAt > localSetlistsUpdatedAt) {
+        local.setlists = cloudSetlists;
+        local.setlistsUpdatedAt = cloudSetlistsUpdatedAt;
+        if (!local.setlists.some(sl => sl.id === local.activeSetlistId)) {
+          local.activeSetlistId = local.setlists[0]?.id || null;
+        }
+      } else if (localSetlistsUpdatedAt > cloudSetlistsUpdatedAt) {
+        Cloud._enqueue({ type: 'setlists', setlists: local.setlists, updatedAt: localSetlistsUpdatedAt });
       }
 
       _save(local);
@@ -180,14 +214,14 @@ const Cloud = {
     }
   },
 
-  async pushSetlist(ids, updatedAt) {
+  async pushSetlists(setlists, updatedAt) {
     if (!this.url) return;
     this._setState('syncing');
     try {
-      await this._send({ action: 'setlist', ids, updatedAt });
+      await this._send({ action: 'setlists', setlists, updatedAt });
       this._setState(this._queue().length ? 'pending' : 'idle');
     } catch(e) {
-      this._enqueue({ type: 'setlist', ids, updatedAt });
+      this._enqueue({ type: 'setlists', setlists, updatedAt });
       this._setState('error');
     }
   },
@@ -203,8 +237,8 @@ const Cloud = {
       try {
         let payload;
         if (action.type === 'save')    payload = { action: 'save', song: action.song };
-        else if (action.type === 'delete')  payload = { action: 'delete', id: action.id };
-        else if (action.type === 'setlist') payload = { action: 'setlist', ids: action.ids, updatedAt: action.updatedAt };
+        else if (action.type === 'delete')   payload = { action: 'delete', id: action.id };
+        else if (action.type === 'setlists') payload = { action: 'setlists', setlists: action.setlists, updatedAt: action.updatedAt };
         await this._send(payload);
         sent++;
       } catch {
@@ -222,36 +256,84 @@ window.addEventListener('online', () => {
 });
 
 const Setlist = {
-  ids() { return _db().setlist || []; },
+  all() { return _db().setlists; },
+  activeId() { return _db().activeSetlistId || null; },
+  active() {
+    const data = _db();
+    return data.setlists.find(sl => sl.id === data.activeSetlistId) || null;
+  },
+  setActive(id) {
+    const data = _db();
+    if (!data.setlists.some(sl => sl.id === id)) return;
+    data.activeSetlistId = id;
+    _save(data);
+  },
+
+  create(name) {
+    const data = _db();
+    const now = Date.now();
+    const sl = { id: _uid(), name: (name || 'Setlist').trim() || 'Setlist', songIds: [], updatedAt: now, createdAt: now };
+    data.setlists.push(sl);
+    data.activeSetlistId = sl.id;
+    data.setlistsUpdatedAt = now;
+    _save(data);
+    Cloud.pushSetlists(data.setlists, data.setlistsUpdatedAt);
+    return sl.id;
+  },
+  rename(id, name) {
+    const data = _db();
+    const sl = data.setlists.find(s => s.id === id);
+    if (!sl) return;
+    sl.name = (name || '').trim() || sl.name;
+    sl.updatedAt = Date.now();
+    data.setlistsUpdatedAt = sl.updatedAt;
+    _save(data);
+    Cloud.pushSetlists(data.setlists, data.setlistsUpdatedAt);
+  },
+  delete(id) {
+    const data = _db();
+    data.setlists = data.setlists.filter(s => s.id !== id);
+    if (data.activeSetlistId === id) {
+      data.activeSetlistId = data.setlists[0]?.id || null;
+    }
+    data.setlistsUpdatedAt = Date.now();
+    _save(data);
+    Cloud.pushSetlists(data.setlists, data.setlistsUpdatedAt);
+  },
+
+  // Ações sobre o setlist ativo
+  ids() { return this.active()?.songIds || []; },
   get() { return this.ids().map(id => Songs.get(id)).filter(Boolean); },
   has(id) { return this.ids().includes(id); },
 
-  _mutate(fn) {
+  _mutateActive(fn) {
     const data = _db();
-    const nextList = fn(data.setlist || []);
-    data.setlist = nextList;
-    data.setlistUpdatedAt = Date.now();
+    let sl = data.setlists.find(s => s.id === data.activeSetlistId);
+    // Se não tem setlist ativo, cria um padrão sob demanda
+    if (!sl) {
+      const now = Date.now();
+      sl = { id: _uid(), name: 'Setlist', songIds: [], updatedAt: now, createdAt: now };
+      data.setlists.push(sl);
+      data.activeSetlistId = sl.id;
+    }
+    sl.songIds = fn(sl.songIds);
+    sl.updatedAt = Date.now();
+    data.setlistsUpdatedAt = sl.updatedAt;
     _save(data);
-    Cloud.pushSetlist(nextList, data.setlistUpdatedAt);
+    Cloud.pushSetlists(data.setlists, data.setlistsUpdatedAt);
   },
 
-  add(id) {
-    this._mutate(list => list.includes(id) ? list : [...list, id]);
-  },
-  remove(id) {
-    this._mutate(list => list.filter(sid => sid !== id));
-  },
+  add(songId) { this._mutateActive(list => list.includes(songId) ? list : [...list, songId]); },
+  remove(songId) { this._mutateActive(list => list.filter(sid => sid !== songId)); },
   move(from, to) {
-    this._mutate(list => {
+    this._mutateActive(list => {
       const arr = [...list];
       const [item] = arr.splice(from, 1);
       arr.splice(to, 0, item);
       return arr;
     });
   },
-  clear() {
-    this._mutate(() => []);
-  }
+  clear() { this._mutateActive(() => []); }
 };
 
 // ── TEMA (light / dark / auto) ────────────────
@@ -284,7 +366,7 @@ const Storage = {
     try {
       const d = JSON.parse(json);
       if (!Array.isArray(d.songs)) throw new Error('invalid');
-      _save({ songs: d.songs, setlist: d.setlist || [] });
+      _save(_migrate(d));
       return true;
     } catch { return false; }
   }

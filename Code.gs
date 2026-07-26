@@ -51,9 +51,29 @@ function doGet() {
         updatedAt: Number(r[8] || 0)
       }));
     const props = PropertiesService.getScriptProperties();
-    const setlist = JSON.parse(props.getProperty('setlist') || '[]');
-    const setlistUpdatedAt = Number(props.getProperty('setlistUpdatedAt') || 0);
-    return out({ ok: true, songs, setlist, setlistUpdatedAt });
+    let setlists = JSON.parse(props.getProperty('setlists') || 'null');
+    let setlistsUpdatedAt = Number(props.getProperty('setlistsUpdatedAt') || 0);
+    // Migração automática: se só tiver o setlist antigo, converte
+    if (!Array.isArray(setlists)) {
+      const oldList = JSON.parse(props.getProperty('setlist') || '[]');
+      const oldTs = Number(props.getProperty('setlistUpdatedAt') || 0);
+      if (Array.isArray(oldList) && oldList.length > 0) {
+        const now = oldTs || Date.now();
+        setlists = [{
+          id: Utilities.getUuid(),
+          name: 'Setlist',
+          songIds: oldList,
+          updatedAt: now,
+          createdAt: now
+        }];
+        setlistsUpdatedAt = now;
+        props.setProperty('setlists', JSON.stringify(setlists));
+        props.setProperty('setlistsUpdatedAt', String(setlistsUpdatedAt));
+      } else {
+        setlists = [];
+      }
+    }
+    return out({ ok: true, songs, setlists, setlistsUpdatedAt });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
@@ -62,21 +82,23 @@ function doGet() {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    if (body.action === 'save')    return out(saveSong(body.song));
-    if (body.action === 'delete')  return out(deleteSong(body.id));
-    if (body.action === 'setlist') return out(saveSetlist(body));
+    if (body.action === 'save')     return out(saveSong(body.song));
+    if (body.action === 'delete')   return out(deleteSong(body.id));
+    if (body.action === 'setlists') return out(saveSetlists(body));
     return out({ ok: false, error: 'ação inválida' });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
 }
 
-function saveSetlist(body) {
-  const ids = Array.isArray(body.ids) ? body.ids.filter(x => typeof x === 'string') : [];
+function saveSetlists(body) {
+  const setlists = Array.isArray(body.setlists) ? body.setlists.filter(sl =>
+    sl && typeof sl.id === 'string' && typeof sl.name === 'string' && Array.isArray(sl.songIds)
+  ) : [];
   const updatedAt = Number(body.updatedAt) || Date.now();
   const props = PropertiesService.getScriptProperties();
-  props.setProperty('setlist', JSON.stringify(ids));
-  props.setProperty('setlistUpdatedAt', String(updatedAt));
+  props.setProperty('setlists', JSON.stringify(setlists));
+  props.setProperty('setlistsUpdatedAt', String(updatedAt));
   return { ok: true, updatedAt };
 }
 

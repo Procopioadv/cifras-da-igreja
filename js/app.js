@@ -364,10 +364,34 @@ function viewSong() {
 }
 
 function viewSetlist() {
+  const all = Setlist.all();
+  const active = Setlist.active();
   const songs = Setlist.get();
 
-  const list = songs.length
-    ? songs.map((s, i) => `
+  const tabs = all.length
+    ? `<div class="setlist-tabs">
+         ${all.map(sl => `
+           <button class="setlist-tab ${sl.id === active?.id ? 'active' : ''}" onclick="doSwitchSetlist('${jsEsc(sl.id)}')">
+             ${h(sl.name)}
+             <span class="setlist-tab-count">${sl.songIds.length}</span>
+           </button>`).join('')}
+         <button class="setlist-tab-add" onclick="doCreateSetlist()" title="Novo setlist">&#43;</button>
+       </div>`
+    : '';
+
+  const manageBar = active ? `
+    <div class="setlist-manage">
+      <span class="setlist-name">${h(active.name)}</span>
+      <button class="btn-slman" onclick="doRenameSetlist('${jsEsc(active.id)}')" title="Renomear">&#9998;</button>
+      <button class="btn-slman" onclick="doDeleteSetlist('${jsEsc(active.id)}')" title="Excluir setlist">&#128465;</button>
+      ${songs.length ? `<button class="btn-slman" onclick="doClearSetlist()" title="Limpar músicas">&#10005;</button>` : ''}
+    </div>` : '';
+
+  const list = !all.length
+    ? '<div class="empty-state">Nenhum setlist ainda<br><small>Toque no + acima para criar</small></div>'
+    : !songs.length
+    ? '<div class="empty-state">Setlist vazio<br><small>Adicione músicas pelo repertório usando &#9734;</small></div>'
+    : songs.map((s, i) => `
         <div class="setlist-item">
           <span class="setlist-num">${i + 1}</span>
           <div class="setlist-info" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
@@ -383,15 +407,16 @@ function viewSetlist() {
               : '<span class="btn-move-ph"></span>'}
             <button class="btn-remove" onclick="Setlist.remove('${jsEsc(s.id)}');renderMain()">&#10005;</button>
           </div>
-        </div>`).join('')
-    : '<div class="empty-state">Setlist vazio<br><small>Adicione músicas pelo repertório usando &#9734;</small></div>';
+        </div>`).join('');
 
   return `
     <div class="header">
-      <h1>Setlist</h1>
+      <h1>Setlists</h1>
       ${syncBadgeHTML()}
-      ${songs.length ? `<button class="btn-icon" onclick="doClearSetlist()" title="Limpar">&#128465;</button>` : ''}
+      ${!all.length ? `<button class="btn-icon" onclick="doCreateSetlist()" title="Novo">&#43;</button>` : ''}
     </div>
+    ${tabs}
+    ${manageBar}
     <div class="setlist-list">${list}</div>`;
 }
 
@@ -659,7 +684,36 @@ function toggleSetlist(id) {
 }
 
 function doClearSetlist() {
-  if (confirm('Limpar o setlist?')) { Setlist.clear(); renderMain(); }
+  if (confirm('Limpar as músicas deste setlist?')) { Setlist.clear(); renderMain(); }
+}
+
+function doSwitchSetlist(id) {
+  Setlist.setActive(id);
+  renderMain();
+}
+
+function doCreateSetlist() {
+  const name = prompt('Nome do novo setlist (ex: Missa Domingo, Ensaio):');
+  if (name === null) return;
+  Setlist.create(name);
+  renderMain();
+}
+
+function doRenameSetlist(id) {
+  const cur = Setlist.all().find(s => s.id === id);
+  if (!cur) return;
+  const name = prompt('Novo nome:', cur.name);
+  if (name === null) return;
+  Setlist.rename(id, name);
+  renderMain();
+}
+
+function doDeleteSetlist(id) {
+  const cur = Setlist.all().find(s => s.id === id);
+  if (!cur) return;
+  if (!confirm(`Excluir o setlist "${cur.name}"? As músicas continuam no repertório.`)) return;
+  Setlist.delete(id);
+  renderMain();
 }
 
 function doSave(e) {
