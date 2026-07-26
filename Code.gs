@@ -13,7 +13,7 @@
 // 6. Cole a URL em Configurações > Sincronização em Nuvem no app
 // ============================================================
 
-const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt'];
+const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes'];
 
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -23,6 +23,13 @@ function getSheet() {
     s.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     s.setFrozenRows(1);
     s.setColumnWidth(6, 600); // coluna content mais larga
+  } else {
+    // Se o schema evoluiu, adiciona colunas novas ao cabeçalho
+    const lastCol = s.getLastColumn();
+    if (lastCol < HEADERS.length) {
+      s.getRange(1, lastCol + 1, 1, HEADERS.length - lastCol)
+        .setValues([HEADERS.slice(lastCol)]);
+    }
   }
   return s;
 }
@@ -48,7 +55,8 @@ function doGet() {
         category:  String(r[5] || ''),
         content:   String(r[6] || ''),
         createdAt: Number(r[7] || 0),
-        updatedAt: Number(r[8] || 0)
+        updatedAt: Number(r[8] || 0),
+        notes:     String(r[9] || '')
       }));
     const props = PropertiesService.getScriptProperties();
     let setlists = JSON.parse(props.getProperty('setlists') || 'null');
@@ -111,7 +119,7 @@ function saveSong(song) {
     if (String(rows[i][0]) === String(song.id)) {
       sheet.getRange(i + 1, 1, 1, HEADERS.length).setValues([[
         song.id, song.title||'', song.artist||'', song.key||'',
-        song.capo||0, song.category||'', song.content||'', rows[i][7], now
+        song.capo||0, song.category||'', song.content||'', rows[i][7], now, song.notes||''
       ]]);
       return { ok: true, id: song.id };
     }
@@ -120,7 +128,7 @@ function saveSong(song) {
   const id = song.id || Utilities.getUuid();
   sheet.appendRow([
     id, song.title||'', song.artist||'', song.key||'',
-    song.capo||0, song.category||'', song.content||'', song.createdAt||now, now
+    song.capo||0, song.category||'', song.content||'', song.createdAt||now, now, song.notes||''
   ]);
   return { ok: true, id };
 }

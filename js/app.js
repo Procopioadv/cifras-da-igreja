@@ -320,6 +320,12 @@ function viewSong() {
       </div>
     </div>
 
+    ${song.notes ? `
+    <div class="song-notes">
+      <div class="song-notes-label">&#128221; Anotações</div>
+      <div class="song-notes-body">${h(song.notes).replace(/\n/g, '<br>')}</div>
+    </div>` : ''}
+
     <div class="transpose-bar">
       <button class="btn-tp" onclick="doTranspose(-2)">-2</button>
       <button class="btn-tp" onclick="doTranspose(-1)">-1</button>
@@ -451,6 +457,12 @@ function viewEdit() {
           <option value="">-- Selecionar --</option>
           ${CATS.map(c => `<option value="${h(c)}" ${song.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
         </select>
+      </label>
+
+      <label class="form-label">
+        Anotações
+        <span class="form-hint">BPM, arranjo, quem canta o solo, links de referência, etc.</span>
+        <textarea class="form-textarea form-notes" name="notes" placeholder="Ex: 72 bpm, solo de flauta no refrão, entrada com voz feminina...">${h(song.notes)}</textarea>
       </label>
 
       <label class="form-label">
@@ -726,6 +738,7 @@ function doSave(e) {
     key: f.key.value,
     capo: state.editSong?.capo || 0,
     category: f.category.value,
+    notes: f.notes.value.trim(),
     content: f.content.value,
   };
   const id = Songs.save(song);

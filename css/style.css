@@ -274,6 +274,32 @@ body {
 
 .song-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
+.song-notes {
+  margin: 0.5rem 1rem 0;
+  padding: 0.75rem 0.875rem;
+  background: rgba(251, 191, 36, 0.12);
+  border-left: 3px solid var(--star);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.song-notes-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.form-notes {
+  min-height: 90px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
 /* ── TRANSPOSE BAR ───────────────────────────── */
 .transpose-bar {
   display: flex;
