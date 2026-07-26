@@ -310,6 +310,86 @@ body {
 .badge-cat { background: #7c3aed; color: white; font-weight: 500; }
 .badge-tp  { background: #ea580c; color: white; }
 .badge-capo { background: #0f766e; color: white; }
+.badge-tag {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  font-weight: 600;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+}
+[data-theme="dark"] .badge-tag {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .badge-tag {
+    background: rgba(167, 139, 250, 0.18);
+    color: #c4b5fd;
+    border-color: rgba(167, 139, 250, 0.45);
+  }
+}
+
+.song-tags-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.tags-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.tags-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tags-chips:empty { display: none; }
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.6rem;
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .tag-chip {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tag-chip {
+    background: rgba(167, 139, 250, 0.18);
+    color: #c4b5fd;
+    border-color: rgba(167, 139, 250, 0.45);
+  }
+}
+
+.tag-chip-x {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.tag-chip-x:hover { opacity: 1; }
+
+.tags-input { font-size: 0.9rem; }
 
 /* ── SONG VIEW ───────────────────────────────── */
 .song-meta {

@@ -6,6 +6,7 @@ const state = {
   search: '',
   category: '',
   filterKey: '',
+  filterTag: '',
   filterInSetlist: false,
   sort: localStorage.getItem('cifras_sort') || 'title',
   editSong: null,
@@ -254,16 +255,20 @@ function viewRepertorio() {
   const q = state.search.toLowerCase();
   const cat = state.category;
   const filterKey = state.filterKey;
+  const filterTag = state.filterTag;
   const activeSetlist = Setlist.active();
   const setlistIds = new Set(activeSetlist?.songIds || []);
   const usedKeys = [...new Set(all.map(s => s.key).filter(Boolean))].sort();
+  const usedTags = [...new Set(all.flatMap(s => Array.isArray(s.tags) ? s.tags : []))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   let filtered = all.filter(s => {
     const mq = !q || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q);
     const mc = !cat || s.category === cat;
     const mk = !filterKey || s.key === filterKey;
+    const mt = !filterTag || (Array.isArray(s.tags) && s.tags.some(t => t.toLowerCase() === filterTag.toLowerCase()));
     const ms = !state.filterInSetlist || setlistIds.has(s.id);
-    return mq && mc && mk && ms;
+    return mq && mc && mk && mt && ms;
   });
 
   // Ordenação
@@ -272,7 +277,7 @@ function viewRepertorio() {
   else if (state.sort === 'played')  filtered.sort((a, b) => (a.lastPlayedAt || 0) - (b.lastPlayedAt || 0));
   else                               filtered.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
 
-  const anyFilter = q || cat || filterKey || state.filterInSetlist || state.sort !== 'title';
+  const anyFilter = q || cat || filterKey || filterTag || state.filterInSetlist || state.sort !== 'title';
 
   const showPlayedInfo = state.sort === 'played';
   const list = filtered.length
@@ -281,6 +286,7 @@ function viewRepertorio() {
           <div class="song-item-body">
             <span class="song-name">${h(s.title)}</span>
             ${s.artist ? `<span class="song-sub">${h(s.artist)}</span>` : ''}
+            ${(Array.isArray(s.tags) && s.tags.length) ? `<span class="song-tags-row">${s.tags.map(t => `<span class="badge badge-tag">#${h(t)}</span>`).join('')}</span>` : ''}
             ${showPlayedInfo ? `<span class="song-sub song-played-hint">${s.lastPlayedAt ? '&#127925; ' + relativeTime(s.lastPlayedAt) : '&#127925; nunca tocada'}</span>` : ''}
           </div>
           <div class="song-item-right">
@@ -309,6 +315,11 @@ function viewRepertorio() {
         <option value="">Todos tons</option>
         ${usedKeys.map(k => `<option value="${h(k)}" ${filterKey === k ? 'selected' : ''}>${h(k)}</option>`).join('')}
       </select>
+      ${usedTags.length ? `
+      <select class="filter-chip" onchange="state.filterTag=this.value;renderMain()" title="Filtrar por tag">
+        <option value="">Todas tags</option>
+        ${usedTags.map(t => `<option value="${h(t)}" ${filterTag === t ? 'selected' : ''}>#${h(t)}</option>`).join('')}
+      </select>` : ''}
       <select class="filter-chip" onchange="doChangeSort(this.value)" title="Ordenar">
         <option value="title"   ${state.sort === 'title'   ? 'selected' : ''}>A → Z</option>
         <option value="updated" ${state.sort === 'updated' ? 'selected' : ''}>Recém-editadas</option>
@@ -353,6 +364,7 @@ function viewSong() {
         ${curKey ? `<span class="badge badge-key">Tom: ${h(curKey)}</span>` : ''}
         ${song.capo ? `<span class="badge badge-capo">Capo ${song.capo}</span>` : ''}
         ${state.semitones !== 0 ? `<span class="badge badge-tp">${state.semitones > 0 ? '+' : ''}${state.semitones} st</span>` : ''}
+        ${(Array.isArray(song.tags) ? song.tags : []).map(t => `<span class="badge badge-tag">#${h(t)}</span>`).join('')}
       </div>
     </div>
 
@@ -500,6 +512,19 @@ function viewEdit() {
       </label>
 
       <label class="form-label">
+        Tags
+        <span class="form-hint">Marque temas, ocasiões ou estilos (ex: natal, adoração, jovens). Enter ou v&iacute;rgula para adicionar.</span>
+        <div class="tags-input-wrap">
+          <div class="tags-chips" id="tags-chips">
+            ${(Array.isArray(song.tags) ? song.tags : []).map((t, i) => `<span class="tag-chip">#${h(t)}<button type="button" class="tag-chip-x" onclick="doTagRemove(${i})" title="Remover">&#10005;</button></span>`).join('')}
+          </div>
+          <input type="text" class="form-input tags-input" id="tags-input" placeholder="Digite uma tag e pressione Enter"
+            onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();doTagAdd(this)}"
+            onblur="doTagAdd(this)">
+        </div>
+      </label>
+
+      <label class="form-label">
         Anotações
         <span class="form-hint">BPM, arranjo, quem canta o solo, links de referência, etc.</span>
         <textarea class="form-textarea form-notes" name="notes" placeholder="Ex: 72 bpm, solo de flauta no refrão, entrada com voz feminina...">${h(song.notes)}</textarea>
@@ -633,7 +658,34 @@ function viewSettings() {
 function doEditCurrentSong() {
   const song = Songs.get(state.songId);
   if (!song) return;
-  go('edit', { editSong: song, songId: song.id });
+  go('edit', { editSong: { ...song, tags: [...(song.tags || [])] }, songId: song.id });
+}
+
+function renderTagChips() {
+  const el = document.getElementById('tags-chips');
+  if (!el) return;
+  const tags = (state.editSong && Array.isArray(state.editSong.tags)) ? state.editSong.tags : [];
+  el.innerHTML = tags.map((t, i) => `<span class="tag-chip">#${h(t)}<button type="button" class="tag-chip-x" onclick="doTagRemove(${i})" title="Remover">&#10005;</button></span>`).join('');
+}
+
+function doTagAdd(input) {
+  const raw = (input.value || '').trim();
+  if (!raw) return;
+  if (!state.editSong) state.editSong = {};
+  if (!Array.isArray(state.editSong.tags)) state.editSong.tags = [];
+  raw.split(',').map(t => t.trim().replace(/^#+/, '')).filter(Boolean).forEach(t => {
+    if (!state.editSong.tags.some(x => x.toLowerCase() === t.toLowerCase())) {
+      state.editSong.tags.push(t);
+    }
+  });
+  input.value = '';
+  renderTagChips();
+}
+
+function doTagRemove(idx) {
+  if (!state.editSong || !Array.isArray(state.editSong.tags)) return;
+  state.editSong.tags.splice(idx, 1);
+  renderTagChips();
 }
 
 function doSetTheme(mode) {
@@ -827,6 +879,7 @@ function doClearFilters() {
   state.search = '';
   state.category = '';
   state.filterKey = '';
+  state.filterTag = '';
   state.filterInSetlist = false;
   state.sort = 'title';
   localStorage.setItem('cifras_sort', 'title');
@@ -1007,6 +1060,9 @@ document.addEventListener('pointerdown', e => {
 function doSave(e) {
   e.preventDefault();
   const f = e.target;
+  // Captura tag digitada mas não confirmada
+  const tagInput = document.getElementById('tags-input');
+  if (tagInput && tagInput.value.trim()) doTagAdd(tagInput);
   const song = {
     ...(state.editSong || {}),
     title: f.title.value.trim(),
@@ -1016,6 +1072,7 @@ function doSave(e) {
     category: f.category.value,
     notes: f.notes.value.trim(),
     content: f.content.value,
+    tags: Array.isArray(state.editSong?.tags) ? state.editSong.tags : [],
   };
   const id = Songs.save(song);
   go('song', { songId: id, semitones: 0, editSong: null });

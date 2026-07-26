@@ -13,7 +13,7 @@
 // 6. Cole a URL em Configurações > Sincronização em Nuvem no app
 // ============================================================
 
-const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes','lastPlayedAt'];
+const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes','lastPlayedAt','tags'];
 
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -46,19 +46,29 @@ function doGet() {
     const rows = sheet.getDataRange().getValues();
     const songs = rows.slice(1)
       .filter(r => r[0])
-      .map(r => ({
-        id:        String(r[0]),
-        title:     String(r[1] || ''),
-        artist:    String(r[2] || ''),
-        key:       String(r[3] || ''),
-        capo:      Number(r[4] || 0),
-        category:  String(r[5] || ''),
-        content:   String(r[6] || ''),
-        createdAt:    Number(r[7] || 0),
-        updatedAt:    Number(r[8] || 0),
-        notes:        String(r[9] || ''),
-        lastPlayedAt: Number(r[10] || 0)
-      }));
+      .map(r => {
+        let tags = [];
+        const rawTags = r[11];
+        if (Array.isArray(rawTags)) tags = rawTags;
+        else if (rawTags) {
+          try { const p = JSON.parse(String(rawTags)); if (Array.isArray(p)) tags = p; }
+          catch(_) { tags = String(rawTags).split(',').map(t => t.trim()).filter(Boolean); }
+        }
+        return {
+          id:        String(r[0]),
+          title:     String(r[1] || ''),
+          artist:    String(r[2] || ''),
+          key:       String(r[3] || ''),
+          capo:      Number(r[4] || 0),
+          category:  String(r[5] || ''),
+          content:   String(r[6] || ''),
+          createdAt:    Number(r[7] || 0),
+          updatedAt:    Number(r[8] || 0),
+          notes:        String(r[9] || ''),
+          lastPlayedAt: Number(r[10] || 0),
+          tags:         tags
+        };
+      });
     const props = PropertiesService.getScriptProperties();
     let setlists = JSON.parse(props.getProperty('setlists') || 'null');
     let setlistsUpdatedAt = Number(props.getProperty('setlistsUpdatedAt') || 0);
@@ -139,12 +149,13 @@ function saveSong(song) {
   const rows  = sheet.getDataRange().getValues();
   const now   = Date.now();
 
+  const tagsStr = JSON.stringify(Array.isArray(song.tags) ? song.tags : []);
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(song.id)) {
       sheet.getRange(i + 1, 1, 1, HEADERS.length).setValues([[
         song.id, song.title||'', song.artist||'', song.key||'',
         song.capo||0, song.category||'', song.content||'', rows[i][7], now,
-        song.notes||'', Number(song.lastPlayedAt || rows[i][10] || 0)
+        song.notes||'', Number(song.lastPlayedAt || rows[i][10] || 0), tagsStr
       ]]);
       return { ok: true, id: song.id };
     }
@@ -154,7 +165,7 @@ function saveSong(song) {
   sheet.appendRow([
     id, song.title||'', song.artist||'', song.key||'',
     song.capo||0, song.category||'', song.content||'', song.createdAt||now, now,
-    song.notes||'', Number(song.lastPlayedAt || 0)
+    song.notes||'', Number(song.lastPlayedAt || 0), tagsStr
   ]);
   return { ok: true, id };
 }
