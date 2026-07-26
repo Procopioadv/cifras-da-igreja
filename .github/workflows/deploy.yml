@@ -1,13 +1,30 @@
-name: Deploy to Netlify
+name: Deploy
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-frontend:
+    name: Netlify (frontend)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy
+      - name: Deploy to Netlify
         run: npx netlify-cli deploy --prod --dir=. --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} --site=${{ secrets.NETLIFY_SITE_ID }}
+
+  deploy-backend:
+    name: Apps Script (backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup clasp credentials
+        run: |
+          mkdir -p ~/.config/clasp
+          echo '${{ secrets.CLASP_CREDENTIALS }}' > ~/.clasprc.json
+      - name: Install clasp
+        run: npm install -g @google/clasp
+      - name: Push Code.gs
+        run: clasp push --force
+      - name: Deploy new version
+        run: clasp deploy --deploymentId ${{ secrets.CLASP_DEPLOYMENT_ID }} --description "Auto-deploy $(date +'%Y-%m-%d %H:%M')"
