@@ -274,6 +274,7 @@ function viewRepertorio() {
   return `
     <div class="header">
       <h1>Cifras da Igreja</h1>
+      ${syncBadgeHTML()}
       <button class="btn-icon" onclick="go('settings')" title="Configurações">&#9881;</button>
     </div>
     <div class="search-bar">
@@ -301,6 +302,7 @@ function viewSong() {
     <div class="header">
       <button class="btn-back" onclick="goBack()">&#8592; Voltar</button>
       <h1>${h(song.title)}</h1>
+      ${syncBadgeHTML()}
       <button class="btn-icon ${inSL ? 'star-active' : ''}" onclick="toggleSetlist('${jsEsc(song.id)}')" title="${inSL ? 'Remover do setlist' : 'Adicionar ao setlist'}">
         ${inSL ? '&#9733;' : '&#9734;'}
       </button>
@@ -387,6 +389,7 @@ function viewSetlist() {
   return `
     <div class="header">
       <h1>Setlist</h1>
+      ${syncBadgeHTML()}
       ${songs.length ? `<button class="btn-icon" onclick="doClearSetlist()" title="Limpar">&#128465;</button>` : ''}
     </div>
     <div class="setlist-list">${list}</div>`;
@@ -446,6 +449,7 @@ function viewBusca() {
   return `
     <div class="header">
       <h1>&#127758; Buscar Online</h1>
+      ${syncBadgeHTML()}
     </div>
 
     <div class="busca-form">
@@ -587,6 +591,21 @@ function doAdjScroll(delta) {
 function doToggleFormat() {
   ChordFormat.toggle();
   renderMain();
+}
+
+// Indicador global de sync (aparece no header de todas as telas se configurado)
+function syncBadgeHTML() {
+  if (!Cloud.isConfigured()) return '';
+  const s = Cloud.state;
+  const pending = Cloud.pendingCount();
+  const map = {
+    syncing: { cls: 'sync-syncing', title: 'Sincronizando...', text: '&#8635;' },
+    pending: { cls: 'sync-pending', title: `${pending} alteração(ões) aguardando envio`, text: String(pending) },
+    error:   { cls: 'sync-error',   title: 'Erro na sincronização — toque para ver',    text: '!' },
+    idle:    { cls: 'sync-ok',      title: 'Sincronizado',                              text: '&#10003;' }
+  };
+  const info = map[s] || map.idle;
+  return `<button class="sync-badge ${info.cls}" onclick="go('settings')" title="${info.title}">${info.text}</button>`;
 }
 
 // Se sair da tela da música por qualquer motivo, encerra apresentação
@@ -861,8 +880,10 @@ async function init() {
     Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
   }
 
-  // Atualiza tela de configurações em tempo real quando o status da nuvem muda
+  // Atualiza header e tela de configurações em tempo real quando o status da nuvem muda
   window.addEventListener('cloud:status', () => {
+    // Atualiza só o badge nas telas onde não faz diferença repintar
+    document.querySelectorAll('.sync-badge').forEach(el => el.outerHTML = syncBadgeHTML());
     if (state.view === 'settings') renderMain();
   });
 

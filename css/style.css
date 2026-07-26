@@ -797,6 +797,34 @@ body {
 
 .star-active { color: var(--star); }
 
+/* ── SYNC BADGE ──────────────────────────────── */
+.sync-badge {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sync-badge:active { transform: scale(0.9); }
+
+.sync-ok      { background: rgba(255,255,255,0.2); }
+.sync-syncing { background: #0891b2; animation: spin 1.2s linear infinite; }
+.sync-pending { background: var(--star); color: #422006; }
+.sync-error   { background: var(--danger); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.sync-syncing:active { transform: scale(0.9) rotate(360deg); }
+
 /* ── AUTO-SCROLL ─────────────────────────────── */
 .scroll-bar {
   display: flex;
