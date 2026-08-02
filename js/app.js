@@ -176,39 +176,34 @@ function renderContentInline(content) {
   }).join('');
 }
 
-// Formato tradicional: cifras em linha própria acima da letra, alinhadas por posição
+// Formato tradicional: cifras acima da letra em blocos inline que quebram linha naturalmente
 function renderContentAbove(content) {
   return content.split('\n').map(line => {
     if (!line.trim() && !line.includes('[')) {
       return '<span class="s-empty"></span>';
     }
     if (!line.includes('[')) {
-      return `<span class="s-line-trad">${h(line) || '&nbsp;'}</span>`;
+      return `<div class="s-chord-line"><span class="cu-unit"><span class="cu-chord">&nbsp;</span><span class="cu-lyric">${h(line)}</span></span></div>`;
     }
 
-    // Reconstrói duas linhas: cifras (com espaços onde estava a letra) e letra pura
-    let chordRow = '';
-    let lyricRow = '';
     const parts = line.split(/(\[[^\]]+\])/);
+    let units = [];
+    let pendingChord = null;
     for (const part of parts) {
       if (part.startsWith('[') && part.endsWith(']')) {
-        const chord = part.slice(1, -1);
-        // Se a cifra ficaria em cima de outra cifra, força um espaço para não colar
-        if (chordRow.length <= lyricRow.length) {
-          chordRow += ' '.repeat(lyricRow.length - chordRow.length) + chord;
-        } else {
-          chordRow += ' ' + chord;
-        }
+        if (pendingChord !== null) units.push({ chord: pendingChord, lyric: '' });
+        pendingChord = part.slice(1, -1);
       } else {
-        lyricRow += part;
+        units.push({ chord: pendingChord ?? '', lyric: part });
+        pendingChord = null;
       }
     }
-    // Se a linha da letra é mais curta que a das cifras, completa com espaços para não quebrar layout
-    if (lyricRow.length < chordRow.length) {
-      lyricRow += ' '.repeat(chordRow.length - lyricRow.length);
-    }
-    return `<span class="s-chord-row">${h(chordRow).replace(/ /g, '&nbsp;')}</span>` +
-           `<span class="s-lyric-row">${h(lyricRow).replace(/ /g, '&nbsp;') || '&nbsp;'}</span>`;
+    if (pendingChord !== null) units.push({ chord: pendingChord, lyric: '' });
+
+    const html = units.map(u =>
+      `<span class="cu-unit"><span class="cu-chord">${u.chord ? h(u.chord) : '&nbsp;'}</span><span class="cu-lyric">${h(u.lyric) || '&nbsp;'}</span></span>`
+    ).join('');
+    return `<div class="s-chord-line">${html}</div>`;
   }).join('');
 }
 
