@@ -677,6 +677,7 @@ function viewSettings() {
       <button class="btn-setting" onclick="doExport()">&#128229; Exportar backup (.json)</button>
       <button class="btn-setting" onclick="document.getElementById('imp').click()">&#128228; Importar backup (.json)</button>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
+      <button class="btn-setting btn-danger" onclick="doDeduplicate()" style="margin-top:0.5rem">&#9986; Remover músicas duplicadas</button>
     </div>
 
     ${cloudOk ? `
@@ -1283,6 +1284,17 @@ function doExport() {
   a.download = `cifras-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function doDeduplicate() {
+  if (!confirm('Isso vai remover automaticamente as músicas duplicadas, mantendo a versão mais recente de cada uma. Continuar?')) return;
+  const removed = Storage.deduplicate();
+  if (removed === 0) {
+    alert('Nenhuma duplicata encontrada!');
+  } else {
+    alert(`Pronto! ${removed} música(s) duplicada(s) removida(s).`);
+    go('repertorio');
+  }
 }
 
 function doImport(e) {

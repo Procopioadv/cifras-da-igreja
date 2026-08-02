@@ -407,6 +407,21 @@ const Storage = {
       _save(_migrate(d));
       return true;
     } catch { return false; }
+  },
+  deduplicate() {
+    const data = _db();
+    const seen = new Map();
+    for (const song of data.songs) {
+      const key = song.title.trim().toLowerCase();
+      const existing = seen.get(key);
+      if (!existing || (Number(song.updatedAt) || 0) > (Number(existing.updatedAt) || 0)) {
+        seen.set(key, song);
+      }
+    }
+    const before = data.songs.length;
+    data.songs = [...seen.values()];
+    _save(data);
+    return before - data.songs.length;
   }
 };
 
