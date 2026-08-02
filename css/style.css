@@ -165,6 +165,56 @@ body {
 }
 
 /* ── SEARCH & FILTER ─────────────────────────── */
+/* ── ABAS DE REPERTÓRIO ── */
+.rep-tabs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  position: sticky;
+  top: 56px;
+  z-index: 11;
+}
+
+.rep-tab {
+  flex-shrink: 0;
+  padding: 0.35rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rep-tab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.rep-tab-add {
+  font-size: 1.1rem;
+  padding: 0.25rem 0.75rem;
+  opacity: 0.6;
+}
+
+/* Gerenciamento de repertórios nas configurações */
+.rep-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.rep-manage-name { flex: 1; font-weight: 600; }
+.rep-manage-count { font-size: 0.8rem; color: var(--muted); }
+.btn-danger-sm { color: #dc2626 !important; }
+
 .search-bar {
   display: flex;
   gap: 0.5rem;
@@ -172,7 +222,7 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
-  top: 56px;
+  top: 100px;
   z-index: 10;
 }
 

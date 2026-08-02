@@ -2,6 +2,11 @@ const DB_KEY = 'cifras_db_v1';
 
 function _uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+function _activeRepId() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY))?.activeRepId || 'igreja'; }
+  catch { return 'igreja'; }
+}
+
 function _migrate(d) {
   d.songs = d.songs || [];
   d.setlists = Array.isArray(d.setlists) ? d.setlists : [];
@@ -12,6 +17,7 @@ function _migrate(d) {
       id: _uid(),
       name: 'Setlist',
       songIds: d.setlist,
+      repId: 'igreja',
       updatedAt: d.setlistUpdatedAt || now,
       createdAt: now
     });
@@ -20,8 +26,15 @@ function _migrate(d) {
   delete d.setlist;
   delete d.setlistUpdatedAt;
   if (d.setlists.length > 0 && !d.setlists.some(sl => sl.id === d.activeSetlistId)) {
-    d.activeSetlistId = d.setlists[0].id;
+    d.activeSetlistId = d.setlists[0]?.id || null;
   }
+  // Migra para multi-repertório
+  if (!Array.isArray(d.repertoires)) {
+    d.repertoires = [{ id: 'igreja', name: 'Igreja' }];
+  }
+  if (!d.activeRepId) d.activeRepId = 'igreja';
+  d.songs.forEach(s => { if (!s.repId) s.repId = 'igreja'; });
+  d.setlists.forEach(sl => { if (!sl.repId) sl.repId = 'igreja'; });
   return d;
 }
 
@@ -34,7 +47,8 @@ function _save(data) { localStorage.setItem(DB_KEY, JSON.stringify(data)); }
 
 const Songs = {
   all() {
-    return _db().songs.slice().sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+    const repId = _activeRepId();
+    return _db().songs.filter(s => s.repId === repId).slice().sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
   },
   get(id) {
     return _db().songs.find(s => s.id === id) || null;
@@ -50,7 +64,7 @@ const Songs = {
       _save(data);
       savedId = song.id;
     } else {
-      const newSong = { ...song, id: _uid(), createdAt: now, updatedAt: now };
+      const newSong = { ...song, id: _uid(), repId: _activeRepId(), createdAt: now, updatedAt: now };
       data.songs.push(newSong);
       _save(data);
       savedId = newSong.id;
@@ -293,11 +307,21 @@ window.addEventListener('online', () => {
 });
 
 const Setlist = {
-  all() { return _db().setlists; },
-  activeId() { return _db().activeSetlistId || null; },
-  active() {
+  all() {
+    const repId = _activeRepId();
+    return _db().setlists.filter(sl => (sl.repId || 'igreja') === repId);
+  },
+  activeId() {
+    const repId = _activeRepId();
     const data = _db();
-    return data.setlists.find(sl => sl.id === data.activeSetlistId) || null;
+    const repSetlists = data.setlists.filter(sl => (sl.repId || 'igreja') === repId);
+    if (repSetlists.some(sl => sl.id === data.activeSetlistId)) return data.activeSetlistId;
+    return repSetlists[0]?.id || null;
+  },
+  active() {
+    const id = this.activeId();
+    if (!id) return null;
+    return _db().setlists.find(sl => sl.id === id) || null;
   },
   setActive(id) {
     const data = _db();
@@ -309,7 +333,7 @@ const Setlist = {
   create(name) {
     const data = _db();
     const now = Date.now();
-    const sl = { id: _uid(), name: (name || 'Setlist').trim() || 'Setlist', songIds: [], updatedAt: now, createdAt: now };
+    const sl = { id: _uid(), name: (name || 'Setlist').trim() || 'Setlist', songIds: [], repId: _activeRepId(), updatedAt: now, createdAt: now };
     data.setlists.push(sl);
     data.activeSetlistId = sl.id;
     data.setlistsUpdatedAt = now;
@@ -349,7 +373,7 @@ const Setlist = {
     // Se não tem setlist ativo, cria um padrão sob demanda
     if (!sl) {
       const now = Date.now();
-      sl = { id: _uid(), name: 'Setlist', songIds: [], updatedAt: now, createdAt: now };
+      sl = { id: _uid(), name: 'Setlist', songIds: [], repId: _activeRepId(), updatedAt: now, createdAt: now };
       data.setlists.push(sl);
       data.activeSetlistId = sl.id;
     }
@@ -395,6 +419,41 @@ const Theme = {
       const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       meta.setAttribute('content', dark ? '#1e293b' : '#4338ca');
     }
+  }
+};
+
+const Repertoire = {
+  all() { return _db().repertoires || [{ id: 'igreja', name: 'Igreja' }]; },
+  activeId() { return _db().activeRepId || 'igreja'; },
+  setActive(id) {
+    const data = _db();
+    data.activeRepId = id;
+    _save(data);
+  },
+  add(name) {
+    const data = _db();
+    const rep = { id: _uid(), name: name.trim() };
+    data.repertoires = data.repertoires || [{ id: 'igreja', name: 'Igreja' }];
+    data.repertoires.push(rep);
+    _save(data);
+    return rep.id;
+  },
+  rename(id, name) {
+    const data = _db();
+    const rep = (data.repertoires || []).find(r => r.id === id);
+    if (rep) { rep.name = name.trim(); _save(data); }
+  },
+  songCount(id) {
+    return _db().songs.filter(s => s.repId === id).length;
+  },
+  delete(id) {
+    if (id === 'igreja') return;
+    const data = _db();
+    data.repertoires = (data.repertoires || []).filter(r => r.id !== id);
+    data.songs = data.songs.filter(s => s.repId !== id);
+    data.setlists = data.setlists.filter(sl => sl.repId !== id);
+    if (data.activeRepId === id) data.activeRepId = 'igreja';
+    _save(data);
   }
 };
 

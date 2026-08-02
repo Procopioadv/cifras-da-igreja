@@ -292,6 +292,10 @@ const KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','Db','Eb','Gb
 // ── VIEWS ─────────────────────────────────────
 
 function viewRepertorio() {
+  const reps = Repertoire.all();
+  const activeRepId = Repertoire.activeId();
+  const isIgreja = activeRepId === 'igreja';
+
   const all = Songs.all();
   const q = state.search.toLowerCase();
   const cat = state.category;
@@ -339,17 +343,21 @@ function viewRepertorio() {
 
   return `
     <div class="header">
-      <h1>Cifras da Igreja</h1>
+      <h1>Cifras</h1>
       ${syncBadgeHTML()}
       <button class="btn-icon" onclick="go('settings')" title="Configurações">&#9881;</button>
+    </div>
+    <div class="rep-tabs">
+      ${reps.map(r => `<button class="rep-tab ${r.id === activeRepId ? 'active' : ''}" onclick="doSetRep('${jsEsc(r.id)}')">${h(r.name)}</button>`).join('')}
+      <button class="rep-tab rep-tab-add" onclick="doAddRep()" title="Novo repertório">&#43;</button>
     </div>
     <div class="search-bar">
       <input class="search-input" type="search" placeholder="Buscar..." value="${h(state.search)}"
         oninput="state.search=this.value;renderMain()">
-      <select class="cat-select" onchange="state.category=this.value;renderMain()">
+      ${isIgreja ? `<select class="cat-select" onchange="state.category=this.value;renderMain()">
         <option value="">Todas</option>
         ${CATS.map(c => `<option value="${h(c)}" ${state.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
-      </select>
+      </select>` : ''}
     </div>
     <div class="filter-bar">
       <select class="filter-chip" onchange="state.filterKey=this.value;renderMain()" title="Filtrar por tom">
@@ -401,7 +409,7 @@ function viewSong() {
       <div class="song-view-title">${h(song.title)}</div>
       ${song.artist ? `<div class="song-view-artist">${h(song.artist)}</div>` : ''}
       <div class="song-badges">
-        ${song.category ? `<span class="badge badge-cat">${h(song.category)}</span>` : ''}
+        ${song.category && Repertoire.activeId() === 'igreja' ? `<span class="badge badge-cat">${h(song.category)}</span>` : ''}
         ${curKey ? `<span class="badge badge-key">Tom: ${h(curKey)}</span>` : ''}
         ${song.capo ? `<span class="badge badge-capo">Capo ${song.capo}</span>` : ''}
         ${state.semitones !== 0 ? `<span class="badge badge-tp">${state.semitones > 0 ? '+' : ''}${state.semitones} st</span>` : ''}
@@ -545,12 +553,12 @@ function viewEdit() {
         </select>
       </label>
 
-      <label class="form-label">Categoria (momento da missa)
+      ${Repertoire.activeId() === 'igreja' ? `<label class="form-label">Categoria (momento da missa)
         <select class="form-select" name="category">
           <option value="">-- Selecionar --</option>
           ${CATS.map(c => `<option value="${h(c)}" ${song.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
         </select>
-      </label>
+      </label>` : ''}
 
       <label class="form-label">
         Tags
@@ -668,8 +676,15 @@ function viewSettings() {
     </div>
 
     <div class="settings-section">
-      <h3>Repertório</h3>
-      <p>${count} música${count !== 1 ? 's' : ''} cadastrada${count !== 1 ? 's' : ''}</p>
+      <h3>Repertórios</h3>
+      ${Repertoire.all().map(r => `
+        <div class="rep-manage-row">
+          <span class="rep-manage-name">${h(r.name)}</span>
+          <span class="rep-manage-count">${Repertoire.songCount(r.id)} músicas</span>
+          <button class="btn-slman" onclick="doRenameRep('${jsEsc(r.id)}')" title="Renomear">&#9998;</button>
+          ${r.id !== 'igreja' ? `<button class="btn-slman btn-danger-sm" onclick="doDeleteRep('${jsEsc(r.id)}','${jsEsc(r.name)}')" title="Excluir">&#128465;</button>` : ''}
+        </div>`).join('')}
+      <button class="btn-setting" style="margin-top:0.5rem" onclick="doAddRep()">&#43; Novo repertório</button>
     </div>
 
     <div class="settings-section">
@@ -1129,7 +1144,7 @@ function doSave(e) {
     artist: f.artist.value.trim(),
     key: f.key.value,
     capo: state.editSong?.capo || 0,
-    category: f.category.value,
+    category: f.category?.value || '',
     notes: f.notes.value.trim(),
     content: f.content.value,
     tags: Array.isArray(state.editSong?.tags) ? state.editSong.tags : [],
@@ -1284,6 +1299,47 @@ function doExport() {
   a.download = `cifras-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function doSetRep(id) {
+  Repertoire.setActive(id);
+  state.search = '';
+  state.category = '';
+  state.filterKey = '';
+  state.filterTag = '';
+  state.filterInSetlist = false;
+  renderMain();
+}
+
+function doAddRep() {
+  const name = prompt('Nome do novo repertório:');
+  if (!name || !name.trim()) return;
+  const id = Repertoire.add(name);
+  Repertoire.setActive(id);
+  state.search = '';
+  state.category = '';
+  state.filterKey = '';
+  state.filterTag = '';
+  state.filterInSetlist = false;
+  renderMain();
+}
+
+function doRenameRep(id) {
+  const current = Repertoire.all().find(r => r.id === id)?.name || '';
+  const name = prompt('Novo nome:', current);
+  if (!name || !name.trim()) return;
+  Repertoire.rename(id, name);
+  renderMain();
+}
+
+function doDeleteRep(id, name) {
+  const count = Repertoire.songCount(id);
+  const msg = count > 0
+    ? `Excluir o repertório "${name}" e suas ${count} músicas permanentemente?`
+    : `Excluir o repertório "${name}"?`;
+  if (!confirm(msg)) return;
+  Repertoire.delete(id);
+  renderMain();
 }
 
 function doDeduplicate() {
