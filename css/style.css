@@ -611,6 +611,11 @@ body {
 }
 
 /* Formato tradicional: cifras acima da letra, monospace para alinhar */
+.song-content.fmt-above {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .s-chord-row, .s-lyric-row, .s-line-trad {
   display: block;
   font-family: 'Courier New', Courier, monospace;

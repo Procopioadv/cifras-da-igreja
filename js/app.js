@@ -460,7 +460,7 @@ function viewSong() {
       <button class="btn-scroll-adj" onclick="doAdjScroll(+5)" title="Mais rápido">&#43;</button>
     </div>
 
-    <div class="song-content" id="sc">${content}</div>
+    <div class="song-content${ChordFormat.get() === 'above' ? ' fmt-above' : ''}" id="sc">${content}</div>
     ${state.presenting ? `
       <button class="present-exit" onclick="doExitPresent()" title="Sair (Esc)">&#10005;</button>
       <div class="present-fontbar">
