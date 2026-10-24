@@ -536,9 +536,10 @@ function viewEdit() {
     <div class="header">
       <button class="btn-back" onclick="goBack()">&#8592; Voltar</button>
       <h1>${isNew ? 'Nova Música' : 'Editar Música'}</h1>
+      <button type="button" class="btn-icon btn-header-save" onclick="document.getElementById('edit-form').requestSubmit()" title="Salvar">&#10003; Salvar</button>
     </div>
 
-    <form class="edit-form" onsubmit="doSave(event)">
+    <form class="edit-form" id="edit-form" onsubmit="doSave(event)">
       <label class="form-label">Título *
         <input class="form-input" type="text" name="title" value="${h(song.title)}" required placeholder="Nome da música">
       </label>

@@ -93,6 +93,11 @@ body {
   padding-bottom: 68px;
 }
 
+/* Previne zoom automático do iOS (dispara em qualquer input com font-size < 16px) */
+@media (max-width: 768px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
 #main { max-width: 720px; margin: 0 auto; }
 
 /* ── HEADER ─────────────────────────────────── */
@@ -157,6 +162,16 @@ body {
   padding: 0.6rem 1rem;
   border-radius: 10px;
   min-width: 56px;
+}
+
+.btn-header-save {
+  background: rgba(255,255,255,0.2);
+  font-size: 0.9rem !important;
+  font-weight: 700;
+  padding: 0.5rem 0.875rem;
+  border-radius: 10px;
+  gap: 0.25rem;
+  white-space: nowrap;
 }
 
 /* ── SEARCH & FILTER ─────────────────────────── */
@@ -941,7 +956,7 @@ body {
 
 /* ── EDIT FORM ───────────────────────────────── */
 .edit-form {
-  padding: 1rem;
+  padding: 1rem 1rem 2rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
