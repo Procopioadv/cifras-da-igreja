@@ -589,10 +589,7 @@ function viewEdit() {
       </label>
       <button type="button" class="btn-convert" onclick="doConvert()">&#8635; Converter formato Cifra Club</button>
 
-      <div class="form-actions">
-        ${!isNew ? `<button type="button" class="btn-danger" onclick="doDelete('${jsEsc(song.id)}')">Excluir</button>` : '<span></span>'}
-        <button type="submit" class="btn-primary">Salvar</button>
-      </div>
+      ${!isNew ? `<button type="button" class="btn-danger" onclick="doDelete('${jsEsc(song.id)}')">Excluir música</button>` : ''}
     </form>`;
 }
 

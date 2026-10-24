@@ -1018,6 +1018,10 @@ body {
   padding-top: 0.25rem;
 }
 
+.btn-danger.btn-delete-song {
+  align-self: flex-start;
+}
+
 .btn-primary {
   background: var(--primary);
   color: white;
