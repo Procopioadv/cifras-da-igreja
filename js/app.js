@@ -212,10 +212,19 @@ const CC_BASE = 'https://www.cifraclub.com.br';
 const CC_SKIP = ['busca','tabs','videos','noticias','pro','premium','login','cadastro',
                  'artistas','categorias','cifras-mais','tom','categoria','playlist','afinador'];
 const PROXIES = [
+  // Proxy via Google Apps Script (não é bloqueado pelo CifraClub)
+  u => {
+    const cloudUrl = localStorage.getItem('cifras_cloud_url');
+    if (!cloudUrl) throw new Error('no-cloud');
+    return fetch(cloudUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'fetchUrl', url: u })
+    }).then(r => r.json()).then(d => { if (!d.ok || !d.html) throw new Error(d.error || 'no-html'); return d.html; });
+  },
   u => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
   u => fetch(`https://corsproxy.io/?url=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
   u => fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`).then(r=>r.json()).then(d=>d.contents||''),
-  u => fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
 ];
 
 function toTitleCase(s) {

@@ -105,10 +105,26 @@ function doPost(e) {
     if (body.action === 'delete')   return out(deleteSong(body.id));
     if (body.action === 'setlists') return out(saveSetlists(body));
     if (body.action === 'backup')   return out(doBackup(body));
+    if (body.action === 'fetchUrl') return out(fetchSiteUrl(body.url));
     return out({ ok: false, error: 'ação inválida' });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
+}
+
+function fetchSiteUrl(url) {
+  if (!url || !url.startsWith('https://www.cifraclub.com.br')) {
+    throw new Error('URL não permitida');
+  }
+  const res = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+    }
+  });
+  const code = res.getResponseCode();
+  if (code !== 200) throw new Error('HTTP ' + code);
+  return { html: res.getContentText() };
 }
 
 function getBackupFolder() {
