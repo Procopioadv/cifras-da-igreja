@@ -1468,12 +1468,18 @@ async function init() {
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
-    // Recarrega automaticamente quando um novo SW assumir controle
-    let refreshing = false;
+    // Quando um SW novo assume controle, NUNCA recarregar à força:
+    // se o usuário estiver editando, perde tudo. Em vez disso, avisa.
+    let notified = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      location.reload();
+      if (notified) return;
+      notified = true;
+      if (state.view === 'edit') {
+        toast('Nova versão disponível. Salve e recarregue quando puder.');
+      } else {
+        toast('Atualizando para a nova versão...');
+        setTimeout(() => location.reload(), 1500);
+      }
     });
   }
 
