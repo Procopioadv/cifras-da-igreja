@@ -536,7 +536,7 @@ function viewEdit() {
     <div class="header">
       <button class="btn-back" onclick="goBack()">&#8592; Voltar</button>
       <h1>${isNew ? 'Nova Música' : 'Editar Música'}</h1>
-      <button type="button" class="btn-icon btn-header-save" onclick="document.getElementById('edit-form').requestSubmit()" title="Salvar">&#10003; Salvar</button>
+      <button type="button" class="btn-icon btn-header-save" onclick="doSaveForm()" title="Salvar">&#10003; Salvar</button>
     </div>
 
     <form class="edit-form" id="edit-form" onsubmit="doSave(event)">
@@ -1128,10 +1128,9 @@ document.addEventListener('pointerdown', e => {
   if (handle) onSetlistHandleDown(e, handle);
 });
 
-function doSave(e) {
-  e.preventDefault();
-  const f = e.target;
-  // Captura tag digitada mas não confirmada
+function doSaveForm() {
+  const f = document.getElementById('edit-form');
+  if (!f) return;
   const tagInput = document.getElementById('tags-input');
   if (tagInput && tagInput.value.trim()) doTagAdd(tagInput);
   const song = {
@@ -1141,12 +1140,18 @@ function doSave(e) {
     key: f.key.value,
     capo: state.editSong?.capo || 0,
     category: f.category?.value || '',
-    notes: f.notes ? f.notes.value.trim() : (state.editSong?.notes || ''),
+    notes: state.editSong?.notes || '',
     content: f.content.value,
     tags: Array.isArray(state.editSong?.tags) ? state.editSong.tags : [],
   };
+  if (!song.title) return;
   const id = Songs.save(song);
   go('song', { songId: id, semitones: 0, editSong: null });
+}
+
+function doSave(e) {
+  e.preventDefault();
+  doSaveForm();
 }
 
 function doDelete(id) {
@@ -1169,11 +1174,15 @@ async function doImportarUrl() {
   try {
     const song = await importCifraClub(url);
     document.body.removeChild(loading);
-    if (!song.content) { alert('Não encontrei cifras nessa página. Tente outra música.'); return; }
+    if (!song.content) { alert('Importado, mas não encontrei cifras nessa página.\nTente outra música ou cole manualmente.'); return; }
     go('edit', { editSong: { title: song.title, artist: song.artist, key: '', category: '', content: song.content }, songId: null });
   } catch(e) {
     document.body.removeChild(loading);
-    alert('Erro ao importar: ' + e.message);
+    const cloudOk = !!localStorage.getItem('cifras_cloud_url');
+    const msg = cloudOk
+      ? 'Erro ao importar: ' + e.message + '\n\nDica: verifique se o Apps Script foi reimplantado após a última atualização.'
+      : 'Erro ao importar.\n\nEsta função requer a sincronização em nuvem (Google Apps Script) configurada em Configurações.';
+    alert(msg);
   }
 }
 

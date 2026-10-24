@@ -1,5 +1,5 @@
 // Regex que detecta se uma palavra é um acorde
-const CHORD_RE = /^[A-G][#b]?(m|maj|min|aug|dim|sus)?(\d+)?([#b]\d+)?(\/[A-G][#b]?)?$/;
+const CHORD_RE = /^[A-G][#b]?(m|maj|min|aug|dim|sus|add)?(\d+)?([#b]\d+)?(\/[A-G][#b]?)?$/;
 
 function isChordWord(w) { return CHORD_RE.test(w); }
 

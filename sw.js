@@ -1,5 +1,5 @@
 // Bump a versão sempre que fizer deploy — invalida o cache antigo.
-const CACHE = 'cifras-v18';
+const CACHE = 'cifras-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -47,12 +47,14 @@ self.addEventListener('fetch', e => {
   const isAppShell = /\.(html|js|css|json)$/.test(url.pathname) || url.pathname.endsWith('/');
 
   if (isAppShell) {
-    // network-first: pega novo, cai pro cache se offline
+    // network-first com cache: 'no-cache' para sempre buscar versão nova do servidor
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-cache' })
         .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
           return res;
         })
         .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
