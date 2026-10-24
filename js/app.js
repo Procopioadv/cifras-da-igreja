@@ -328,6 +328,7 @@ function buildSongList() {
   const list = filtered.length
     ? filtered.map(s => `
         <div class="song-item" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
+          <div class="song-cover"><div class="wave wave-sm"><span></span><span></span><span></span><span></span><span></span></div></div>
           <div class="song-item-body">
             <span class="song-name">${h(s.title)}</span>
             ${s.artist ? `<span class="song-sub">${h(s.artist)}</span>` : ''}
@@ -373,6 +374,11 @@ function viewRepertorio() {
 
   const { list, total, count } = buildSongList();
 
+  const showHero = !anyFilter;
+  const greeting = showHero ? greetingBlock() : '';
+  const hero = showHero ? heroBlock(activeSetlist) : '';
+  const trail = showHero ? trailBlock(all) : '';
+
   return `
     <div class="header">
       <h1>Cifras</h1>
@@ -383,6 +389,9 @@ function viewRepertorio() {
       ${reps.map(r => `<button class="rep-tab ${r.id === activeRepId ? 'active' : ''}" onclick="doSetRep('${jsEsc(r.id)}')">${h(r.name)}</button>`).join('')}
       <button class="rep-tab rep-tab-add" onclick="doAddRep()" title="Novo repertório">&#43;</button>
     </div>
+    ${greeting}
+    ${hero}
+    ${trail}
     <div class="search-bar">
       <input class="search-input" type="search" placeholder="Buscar..." value="${h(state.search)}"
         oninput="doSearch(this.value)">
@@ -417,6 +426,61 @@ function viewRepertorio() {
     <div class="song-count" id="song-count">${count} de ${total} música${total !== 1 ? 's' : ''}</div>`;
 }
 
+function greetingBlock() {
+  const now = new Date();
+  const hour = now.getHours();
+  const salute = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `
+    <div class="greeting">
+      <div class="greeting-row">
+        <h1>${salute}</h1>
+        <span class="today">${h(today)}</span>
+      </div>
+    </div>`;
+}
+
+function heroBlock(activeSetlist) {
+  const songs = activeSetlist ? Setlist.get() : [];
+  if (activeSetlist && songs.length) {
+    const first = songs[0];
+    return `
+      <div class="hero" onclick="go('setlist')">
+        <div class="hero-tag">Setlist ativo</div>
+        <div class="hero-title">${h(activeSetlist.name)}</div>
+        <div class="hero-sub">${songs.length} m&uacute;sica${songs.length !== 1 ? 's' : ''} &middot; come&ccedil;a com ${h(first.title)}</div>
+        <button class="hero-cta" onclick="event.stopPropagation();go('song',{songId:'${jsEsc(first.id)}',semitones:0})">&#9654; Abrir primeira</button>
+      </div>`;
+  }
+  return `
+    <div class="hero" onclick="go('setlist')">
+      <div class="hero-tag">Comece aqui</div>
+      <div class="hero-title">Prepare seu pr&oacute;ximo setlist</div>
+      <div class="hero-sub">Monte a sequ&ecirc;ncia de m&uacute;sicas da pr&oacute;xima celebra&ccedil;&atilde;o.</div>
+      <button class="hero-cta" onclick="event.stopPropagation();doCreateSetlist()">&#43; Novo setlist</button>
+    </div>`;
+}
+
+function trailBlock(allSongs) {
+  const recent = allSongs
+    .filter(s => s.lastPlayedAt)
+    .sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0))
+    .slice(0, 8);
+  if (!recent.length) return '';
+  return `
+    <div class="section-head">
+      <h3>Tocadas recentemente</h3>
+    </div>
+    <div class="trail">
+      ${recent.map(s => `
+        <button class="trail-card" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
+          <div class="cv"><div class="wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+          <div class="t">${h(s.title)}</div>
+          <div class="s">${s.key ? h(s.key) + ' &middot; ' : ''}${h(relativeTime(s.lastPlayedAt))}</div>
+        </button>`).join('')}
+    </div>`;
+}
+
 function viewSong() {
   const song = Songs.get(state.songId);
   if (!song) return '<div style="padding:2rem;text-align:center;color:#dc2626">Música não encontrada</div>';
@@ -424,7 +488,16 @@ function viewSong() {
   const inSL = Setlist.has(song.id);
   const curKey = song.key ? displayKey(song.key, state.semitones) : '';
   const content = renderContent(song.content || '', state.semitones);
-  const tpLabel = state.semitones === 0 ? 'Original' : (state.semitones > 0 ? '+' : '') + state.semitones + ' st';
+  const isIgreja = Repertoire.activeId() === 'igreja';
+
+  // Próxima música do setlist ativo, se houver
+  const slSongs = Setlist.get();
+  const idx = slSongs.findIndex(s => s.id === song.id);
+  const nextSong = (idx >= 0 && idx < slSongs.length - 1) ? slSongs[idx + 1] : null;
+
+  const catTag = (song.category && isIgreja) ? h(song.category) : '';
+  const origTag = song.key ? `Tom original ${h(song.key)}` : '';
+  const metaTag = [catTag, origTag].filter(Boolean).join(' &middot; ');
 
   return `
     <div class="header">
@@ -438,15 +511,10 @@ function viewSong() {
     </div>
 
     <div class="song-meta">
+      ${metaTag ? `<div class="song-view-cat">${metaTag}</div>` : ''}
       <div class="song-view-title">${h(song.title)}</div>
       ${song.artist ? `<div class="song-view-artist">${h(song.artist)}</div>` : ''}
-      <div class="song-badges">
-        ${song.category && Repertoire.activeId() === 'igreja' ? `<span class="badge badge-cat">${h(song.category)}</span>` : ''}
-        ${curKey ? `<span class="badge badge-key">Tom: ${h(curKey)}</span>` : ''}
-        ${song.capo ? `<span class="badge badge-capo">Capo ${song.capo}</span>` : ''}
-        ${state.semitones !== 0 ? `<span class="badge badge-tp">${state.semitones > 0 ? '+' : ''}${state.semitones} st</span>` : ''}
-        ${(Array.isArray(song.tags) ? song.tags : []).map(t => `<span class="badge badge-tag">#${h(t)}</span>`).join('')}
-      </div>
+      ${(Array.isArray(song.tags) && song.tags.length) ? `<div class="song-badges">${song.tags.map(t => `<span class="badge badge-tag">#${h(t)}</span>`).join('')}</div>` : ''}
     </div>
 
     <div class="song-played">
@@ -456,14 +524,25 @@ function viewSong() {
       <button class="btn-played" onclick="doMarkPlayed('${jsEsc(song.id)}')">&#10003; Tocada hoje</button>
     </div>
 
-    <div class="transpose-bar">
-      <button class="btn-tp" onclick="doTranspose(-2)">-2</button>
-      <button class="btn-tp" onclick="doTranspose(-1)">-1</button>
-      <span class="tp-label">${tpLabel}</span>
-      <button class="btn-tp" onclick="doTranspose(+1)">+1</button>
-      <button class="btn-tp" onclick="doTranspose(+2)">+2</button>
-      <button class="btn-tp reset" onclick="state.semitones=0;renderMain()">Reset</button>
-      ${state.semitones !== 0 ? `<button class="btn-tp save-tp" onclick="doSalvarTom()">&#128190; Salvar Tom</button>` : ''}
+    <div class="ctrl-wrap">
+      <div class="transpose-group">
+        <button class="btn-tp" onclick="doTranspose(-1)" title="Transpor -1">&#8722;</button>
+        <span class="tom-display">${curKey ? h(curKey) : '&mdash;'}</span>
+        <button class="btn-tp" onclick="doTranspose(+1)" title="Transpor +1">&#43;</button>
+      </div>
+      ${state.semitones !== 0 ? `<button class="btn-tp reset" onclick="state.semitones=0;renderMain()">Reset</button>` : ''}
+      ${state.semitones !== 0 ? `<button class="btn-tp save-tp" onclick="doSalvarTom()">Salvar tom</button>` : ''}
+      <span class="ctrl-sep"></span>
+      <button class="btn-format" onclick="doToggleFormat()" title="Alternar formato">${ChordFormat.get() === 'above' ? 'Cifra sobre' : 'Cifra acima'}</button>
+      <button class="btn-font" onclick="changeFont(-1)" title="Fonte menor">A&#8722;</button>
+      <button class="btn-font" onclick="changeFont(+1)" title="Fonte maior">A+</button>
+      <span class="ctrl-sep"></span>
+      <button class="btn-scroll" id="btn-scroll" onclick="doToggleScroll()">${AutoScroll.active ? '&#9724; Parar' : '&#9654; Scroll'}</button>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(-5)">&#8722;</button>
+      <span class="scroll-speed" id="scroll-speed">${AutoScroll.speed}</span>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(+5)">&#43;</button>
+      <span class="ctrl-sep"></span>
+      <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250; Palco</button>
     </div>
 
     <div class="capo-bar">
@@ -472,21 +551,21 @@ function viewSong() {
         <option value="0" ${!song.capo ? 'selected' : ''}>Sem capotraste</option>
         ${[1,2,3,4,5,6,7,8,9,10,11].map(n => `<option value="${n}" ${song.capo == n ? 'selected' : ''}>Casa ${n}</option>`).join('')}
       </select>
-      <button class="btn-capo-save" onclick="doSalvarCapo('${jsEsc(song.id)}')">&#128190; Salvar</button>
-    </div>
-
-    <div class="ctrl-bar">
-      <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250;</button>
-      <button class="btn-format" onclick="doToggleFormat()" title="Alternar formato">${ChordFormat.get() === 'above' ? '&#8942; Sobre' : '&#8801; Acima'}</button>
-      <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
-      <button class="btn-font" onclick="changeFont(+1)">A+</button>
-      <button class="btn-scroll" id="btn-scroll" onclick="doToggleScroll()">${AutoScroll.active ? '&#9724; Parar' : '&#9654; Scroll'}</button>
-      <button class="btn-scroll-adj" onclick="doAdjScroll(-5)">&#8722;</button>
-      <span class="scroll-speed" id="scroll-speed">${AutoScroll.speed}</span>
-      <button class="btn-scroll-adj" onclick="doAdjScroll(+5)">&#43;</button>
+      <button class="btn-capo-save" onclick="doSalvarCapo('${jsEsc(song.id)}')">Salvar</button>
     </div>
 
     <div class="song-content${ChordFormat.get() === 'above' ? ' fmt-above' : ''}" id="sc">${content}</div>
+
+    ${nextSong ? `
+      <div class="next-bar" onclick="go('song',{songId:'${jsEsc(nextSong.id)}',semitones:0})">
+        <div class="next-cover"><div class="wave wave-sm"><span></span><span></span><span></span><span></span><span></span></div></div>
+        <div>
+          <div class="next-label">Pr&oacute;xima no setlist</div>
+          <div class="next-t">${h(nextSong.title)}${nextSong.key ? ' &middot; ' + h(nextSong.key) : ''}</div>
+        </div>
+        <span class="next-arrow">&rarr;</span>
+      </div>` : ''}
+
     ${state.presenting ? `
       <button class="present-exit" onclick="doExitPresent()" title="Sair (Esc)">&#10005;</button>
       <div class="present-fontbar">
@@ -513,6 +592,7 @@ function viewSetlist() {
     : '';
 
   const manageBar = active ? `
+    ${songs.length ? `<div style="padding:0.75rem 1rem 0;"><span class="status-tag">&#9679; Ativo agora</span></div>` : ''}
     <div class="setlist-manage">
       <span class="setlist-name">${h(active.name)}</span>
       ${songs.length ? `<button class="btn-slman" onclick="doMarkSetlistPlayed()" title="Marcar setlist inteiro como tocado hoje">&#10003;</button>` : ''}
@@ -524,6 +604,8 @@ function viewSetlist() {
       ${songs.length ? `<button class="btn-slman" onclick="doClearSetlist()" title="Limpar músicas">&#10005;</button>` : ''}
     </div>` : '';
 
+  const pad2 = n => String(n).padStart(2, '0');
+
   const list = !all.length
     ? '<div class="empty-state">Nenhum setlist ainda<br><small>Toque no + acima para criar</small></div>'
     : !songs.length
@@ -531,7 +613,7 @@ function viewSetlist() {
     : songs.map((s, i) => `
         <div class="setlist-item" data-idx="${i}">
           <span class="setlist-handle" title="Arraste para reordenar">&#8942;&#8942;</span>
-          <span class="setlist-num">${i + 1}</span>
+          <span class="setlist-num">${pad2(i + 1)}</span>
           <div class="setlist-info" onclick="go('song',{songId:'${jsEsc(s.id)}',semitones:0})">
             <span class="song-name">${h(s.title)}</span>
             ${s.key ? `<span class="badge badge-key">${h(s.key)}</span>` : ''}

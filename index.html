@@ -3,15 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#4338ca">
+  <meta name="theme-color" content="#f4f4f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Cifras">
   <title>Cifras da Igreja</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script>
     // Aplica tema salvo antes do CSS carregar (evita flash de tela clara)
@@ -26,20 +29,38 @@
 
   <nav id="bottom-nav">
     <button class="nav-btn active" data-view="repertorio" onclick="go('repertorio')">
-      <span class="nav-icon">&#9835;</span>
-      Repertório
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="12" x2="4" y2="12"/><line x1="8" y1="8" x2="8" y2="16"/>
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="16" y1="9" x2="16" y2="15"/>
+          <line x1="20" y1="11" x2="20" y2="13"/>
+        </svg>
+      </span>
+      Início
     </button>
     <button class="nav-btn" data-view="setlist" onclick="go('setlist')">
-      <span class="nav-icon">&#128203;</span>
-      Setlist
-    </button>
-    <button class="nav-btn" data-view="busca" onclick="go('busca')">
-      <span class="nav-icon">&#127758;</span>
-      Buscar
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15 8.5 22 9.5 17 14.5 18.5 21.5 12 18 5.5 21.5 7 14.5 2 9.5 9 8.5 12 2"/>
+        </svg>
+      </span>
+      Setlists
     </button>
     <button class="nav-btn" data-view="edit" onclick="go('edit',{editSong:null,songId:null})">
-      <span class="nav-icon">&#43;</span>
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </span>
       Nova
+    </button>
+    <button class="nav-btn" data-view="busca" onclick="go('busca')">
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      Buscar
     </button>
   </nav>
 

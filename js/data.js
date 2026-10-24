@@ -426,7 +426,7 @@ const Theme = {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
       const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      meta.setAttribute('content', dark ? '#1e293b' : '#4338ca');
+      meta.setAttribute('content', dark ? '#0f0f0e' : '#f4f4f2');
     }
   }
 };
