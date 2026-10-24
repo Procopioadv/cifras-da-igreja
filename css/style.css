@@ -90,12 +90,7 @@ html, body {
 }
 
 body {
-  padding-bottom: 64px;
-}
-
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
-  #bottom-nav { height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+  padding-bottom: 68px;
 }
 
 #main { max-width: 720px; margin: 0 auto; }
@@ -612,6 +607,19 @@ body {
 
 .btn-capo-save:active { opacity: 0.8; }
 
+.ctrl-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ctrl-bar::-webkit-scrollbar { display: none; }
+.ctrl-bar .btn-scroll { flex: 1; min-width: 80px; font-size: 0.8rem; }
+
 .font-bar {
   display: flex;
   justify-content: flex-end;
@@ -1110,12 +1118,17 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: 68px;
   background: var(--surface);
-  border-top: 1px solid var(--border);
+  border-top: 1.5px solid var(--border);
   display: flex;
   z-index: 100;
   box-shadow: var(--shadow-nav);
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  #bottom-nav { height: calc(68px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
 }
 
 .nav-btn {
@@ -1128,15 +1141,21 @@ body {
   background: none;
   cursor: pointer;
   color: var(--muted);
-  gap: 0.2rem;
-  padding: 0.5rem;
-  font-size: 0.65rem;
-  font-weight: 500;
-  transition: color 0.15s;
+  gap: 0.15rem;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  transition: color 0.15s, background 0.15s;
+  border-radius: 10px;
+  margin: 4px 2px;
+  letter-spacing: 0.01em;
 }
 
-.nav-icon { font-size: 1.5rem; line-height: 1; display: block; }
+.nav-btn:active { background: var(--active); }
+
+.nav-icon { font-size: 1.55rem; line-height: 1; display: block; }
 .nav-btn.active { color: var(--primary); }
+.nav-btn.active .nav-icon { transform: scale(1.08); transition: transform 0.15s; }
 
 /* ── BUSCA ONLINE ────────────────────────────── */
 .busca-form {
@@ -1330,6 +1349,7 @@ body.is-presenting .transpose-bar,
 body.is-presenting .capo-bar,
 body.is-presenting .font-bar,
 body.is-presenting .scroll-bar,
+body.is-presenting .ctrl-bar,
 body.is-presenting #bottom-nav {
   display: none !important;
 }

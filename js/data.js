@@ -545,5 +545,6 @@ Ben[C]zemos o vosso santo [F]nome
 [C]Filho do [F]Pai`
     }
   ];
+  localStorage.setItem('cifras_samples_loaded', '1');
   samples.forEach(s => Songs.save(s));
 }

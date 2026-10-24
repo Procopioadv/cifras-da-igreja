@@ -212,9 +212,10 @@ const CC_BASE = 'https://www.cifraclub.com.br';
 const CC_SKIP = ['busca','tabs','videos','noticias','pro','premium','login','cadastro',
                  'artistas','categorias','cifras-mais','tom','categoria','playlist','afinador'];
 const PROXIES = [
+  u => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
+  u => fetch(`https://corsproxy.io/?url=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
   u => fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`).then(r=>r.json()).then(d=>d.contents||''),
-  u => fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
-  u => fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); })
+  u => fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`).then(r=>{ if(!r.ok) throw new Error(); return r.text(); }),
 ];
 
 function toTitleCase(s) {
@@ -417,12 +418,6 @@ function viewSong() {
       </div>
     </div>
 
-    ${song.notes ? `
-    <div class="song-notes">
-      <div class="song-notes-label">&#128221; Anotações</div>
-      <div class="song-notes-body">${h(song.notes).replace(/\n/g, '<br>')}</div>
-    </div>` : ''}
-
     <div class="song-played">
       ${song.lastPlayedAt
         ? `<span class="played-info">&#127925; Última vez tocada: <strong>${new Date(song.lastPlayedAt).toLocaleDateString('pt-BR')}</strong> (${relativeTime(song.lastPlayedAt)})</span>`
@@ -449,18 +444,15 @@ function viewSong() {
       <button class="btn-capo-save" onclick="doSalvarCapo('${jsEsc(song.id)}')">&#128190; Salvar</button>
     </div>
 
-    <div class="font-bar">
-      <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250; Apresentar</button>
+    <div class="ctrl-bar">
+      <button class="btn-tp present" onclick="doEnterPresent()" title="Modo apresentação">&#128250;</button>
       <button class="btn-format" onclick="doToggleFormat()" title="Alternar formato">${ChordFormat.get() === 'above' ? '&#8942; Sobre' : '&#8801; Acima'}</button>
       <button class="btn-font" onclick="changeFont(-1)">A&#8722;</button>
       <button class="btn-font" onclick="changeFont(+1)">A+</button>
-    </div>
-
-    <div class="scroll-bar">
-      <button class="btn-scroll" id="btn-scroll" onclick="doToggleScroll()">${AutoScroll.active ? '&#9724; Parar' : '&#9654; Auto-scroll'}</button>
-      <button class="btn-scroll-adj" onclick="doAdjScroll(-5)" title="Mais lento">&#8722;</button>
+      <button class="btn-scroll" id="btn-scroll" onclick="doToggleScroll()">${AutoScroll.active ? '&#9724; Parar' : '&#9654; Scroll'}</button>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(-5)">&#8722;</button>
       <span class="scroll-speed" id="scroll-speed">${AutoScroll.speed}</span>
-      <button class="btn-scroll-adj" onclick="doAdjScroll(+5)" title="Mais rápido">&#43;</button>
+      <button class="btn-scroll-adj" onclick="doAdjScroll(+5)">&#43;</button>
     </div>
 
     <div class="song-content${ChordFormat.get() === 'above' ? ' fmt-above' : ''}" id="sc">${content}</div>
@@ -571,12 +563,6 @@ function viewEdit() {
             onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();doTagAdd(this)}"
             onblur="doTagAdd(this)">
         </div>
-      </label>
-
-      <label class="form-label">
-        Anotações
-        <span class="form-hint">BPM, arranjo, quem canta o solo, links de referência, etc.</span>
-        <textarea class="form-textarea form-notes" name="notes" placeholder="Ex: 72 bpm, solo de flauta no refrão, entrada com voz feminina...">${h(song.notes)}</textarea>
       </label>
 
       <label class="form-label">
@@ -1145,7 +1131,7 @@ function doSave(e) {
     key: f.key.value,
     capo: state.editSong?.capo || 0,
     category: f.category?.value || '',
-    notes: f.notes.value.trim(),
+    notes: f.notes ? f.notes.value.trim() : (state.editSong?.notes || ''),
     content: f.content.value,
     tags: Array.isArray(state.editSong?.tags) ? state.editSong.tags : [],
   };
@@ -1378,9 +1364,6 @@ function renderMain() {
 }
 
 function updateNav() {
-  const nav = document.getElementById('bottom-nav');
-  const hide = ['song', 'edit', 'settings'].includes(state.view);
-  nav.style.display = hide ? 'none' : 'flex';
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === state.view);
   });
@@ -1433,7 +1416,7 @@ async function init() {
     if (state.view === 'settings') renderMain();
   });
 
-  if (Songs.all().length === 0) loadSampleSongs();
+  if (!localStorage.getItem('cifras_samples_loaded') && Songs.all().length === 0) loadSampleSongs();
   history.replaceState({ ...state }, '');
   renderMain();
 }
