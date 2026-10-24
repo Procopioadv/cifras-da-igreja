@@ -11,6 +11,7 @@ function isChordOnlyLine(line) {
 // Converte formato Cifra Club (acordes em linha separada acima da letra)
 // para o formato de colchetes usado pelo app: [C]palavra [G]outra
 function convertCifraClub(text) {
+  text = text.replace(/\r\n?/g, '\n');
   const lines = text.split('\n');
   const out = [];
   let i = 0;

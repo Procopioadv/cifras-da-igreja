@@ -124,7 +124,7 @@ function fetchSiteUrl(url) {
   });
   const code = res.getResponseCode();
   if (code !== 200) throw new Error('HTTP ' + code);
-  return { html: res.getContentText() };
+  return { ok: true, html: res.getContentText() };
 }
 
 function getBackupFolder() {
