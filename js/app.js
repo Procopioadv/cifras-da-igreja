@@ -828,7 +828,7 @@ document.addEventListener('visibilitychange', async () => {
     if (state.presenting && !_wakeLock && 'wakeLock' in navigator) {
       try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
     }
-    if (Cloud.isConfigured() && navigator.onLine) {
+    if (Cloud.isConfigured() && navigator.onLine && state.view !== 'edit') {
       Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
     }
   }
@@ -841,7 +841,7 @@ document.addEventListener('focusin', e => {
   }
 });
 document.addEventListener('focusout', e => {
-  if (e.target.matches('input, textarea, select')) {
+  if (e.target.matches('input, textarea, select') && state.view === 'edit') {
     document.getElementById('bottom-nav')?.classList.remove('nav-hidden');
   }
 });
@@ -1469,9 +1469,9 @@ async function init() {
     Cloud.pull().then(r => { if (r.ok) { renderMain(); autoBackupIfDue(); } }).catch(() => {});
   }
 
-  // Auto-sync a cada 60 segundos em segundo plano
+  // Auto-sync a cada 60 segundos em segundo plano (nunca durante edição)
   setInterval(() => {
-    if (Cloud.isConfigured() && navigator.onLine && document.visibilityState === 'visible') {
+    if (Cloud.isConfigured() && navigator.onLine && document.visibilityState === 'visible' && state.view !== 'edit') {
       Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
     }
   }, 60_000);
