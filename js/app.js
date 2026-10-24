@@ -301,11 +301,7 @@ const KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','Db','Eb','Gb
 
 // ── VIEWS ─────────────────────────────────────
 
-function viewRepertorio() {
-  const reps = Repertoire.all();
-  const activeRepId = Repertoire.activeId();
-  const isIgreja = activeRepId === 'igreja';
-
+function buildSongList() {
   const all = Songs.all();
   const q = state.search.toLowerCase();
   const cat = state.category;
@@ -313,9 +309,6 @@ function viewRepertorio() {
   const filterTag = state.filterTag;
   const activeSetlist = Setlist.active();
   const setlistIds = new Set(activeSetlist?.songIds || []);
-  const usedKeys = [...new Set(all.map(s => s.key).filter(Boolean))].sort();
-  const usedTags = [...new Set(all.flatMap(s => Array.isArray(s.tags) ? s.tags : []))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   let filtered = all.filter(s => {
     const mq = !q || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q);
@@ -326,13 +319,10 @@ function viewRepertorio() {
     return mq && mc && mk && mt && ms;
   });
 
-  // Ordenação
   if (state.sort === 'updated')      filtered.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   else if (state.sort === 'created') filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   else if (state.sort === 'played')  filtered.sort((a, b) => (a.lastPlayedAt || 0) - (b.lastPlayedAt || 0));
   else                               filtered.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
-
-  const anyFilter = q || cat || filterKey || filterTag || state.filterInSetlist || state.sort !== 'title';
 
   const showPlayedInfo = state.sort === 'played';
   const list = filtered.length
@@ -351,6 +341,38 @@ function viewRepertorio() {
         </div>`).join('')
     : '<div class="empty-state">Nenhuma música encontrada</div>';
 
+  return { list, total: all.length, count: filtered.length };
+}
+
+function doSearch(val) {
+  state.search = val;
+  if (state.view !== 'repertorio') return;
+  const { list, total, count } = buildSongList();
+  const listEl = document.getElementById('song-list-wrap');
+  const countEl = document.getElementById('song-count');
+  if (listEl) listEl.innerHTML = list;
+  if (countEl) countEl.textContent = `${count} de ${total} música${total !== 1 ? 's' : ''}`;
+}
+
+function viewRepertorio() {
+  const reps = Repertoire.all();
+  const activeRepId = Repertoire.activeId();
+  const isIgreja = activeRepId === 'igreja';
+
+  const all = Songs.all();
+  const usedKeys = [...new Set(all.map(s => s.key).filter(Boolean))].sort();
+  const usedTags = [...new Set(all.flatMap(s => Array.isArray(s.tags) ? s.tags : []))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const q = state.search;
+  const cat = state.category;
+  const filterKey = state.filterKey;
+  const filterTag = state.filterTag;
+  const activeSetlist = Setlist.active();
+  const anyFilter = q || cat || filterKey || filterTag || state.filterInSetlist || state.sort !== 'title';
+
+  const { list, total, count } = buildSongList();
+
   return `
     <div class="header">
       <h1>Cifras</h1>
@@ -363,7 +385,7 @@ function viewRepertorio() {
     </div>
     <div class="search-bar">
       <input class="search-input" type="search" placeholder="Buscar..." value="${h(state.search)}"
-        oninput="state.search=this.value;renderMain()">
+        oninput="doSearch(this.value)">
       ${isIgreja ? `<select class="cat-select" onchange="state.category=this.value;renderMain()">
         <option value="">Todas</option>
         ${CATS.map(c => `<option value="${h(c)}" ${state.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
@@ -391,8 +413,8 @@ function viewRepertorio() {
       </button>` : ''}
       ${anyFilter ? `<button class="filter-clear" onclick="doClearFilters()">Limpar</button>` : ''}
     </div>
-    <div class="song-list">${list}</div>
-    <div class="song-count">${filtered.length} de ${all.length} música${all.length !== 1 ? 's' : ''}</div>`;
+    <div class="song-list" id="song-list-wrap">${list}</div>
+    <div class="song-count" id="song-count">${count} de ${total} música${total !== 1 ? 's' : ''}</div>`;
 }
 
 function viewSong() {
