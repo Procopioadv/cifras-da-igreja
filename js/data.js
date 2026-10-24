@@ -190,11 +190,16 @@ const Cloud = {
         this._queue().filter(a => a.type === 'delete').map(a => a.id)
       );
 
+      // Índice local por título+repertório para detectar duplicatas de conteúdo
+      const localByTitle = new Map(
+        local.songs.map(s => [`${s.repId||'igreja'}::${(s.title||'').trim().toLowerCase()}`, s])
+      );
+
       const allIds = new Set([...localById.keys(), ...cloudById.keys()]);
       for (const id of allIds) {
         const l = localById.get(id);
         const c = cloudById.get(id);
-        if (!l && c && pendingDeletes.has(id)) continue; // apagado localmente, ignora da nuvem
+        if (!l && c && pendingDeletes.has(id)) continue; // apagado localmente
         if (l && c) {
           const lu = Number(l.updatedAt) || 0;
           const cu = Number(c.updatedAt) || 0;
@@ -204,7 +209,26 @@ const Cloud = {
           merged.push(l);
           toPush.push(l);
         } else {
-          merged.push(c);
+          // Música só existe na nuvem: verificar se já há uma local com mesmo título+rep
+          const titleKey = `${c.repId||'igreja'}::${(c.title||'').trim().toLowerCase()}`;
+          const localMatch = localByTitle.get(titleKey);
+          if (localMatch) {
+            // Duplicata por conteúdo: manter a mais recente e apagar a outra da nuvem
+            const lu = Number(localMatch.updatedAt) || 0;
+            const cu = Number(c.updatedAt) || 0;
+            if (cu > lu) {
+              // versão da nuvem é mais nova: substituir local por ela
+              const idx = merged.indexOf(localMatch);
+              if (idx >= 0) merged.splice(idx, 1);
+              merged.push({ ...c, id: localMatch.id }); // mantém ID local
+              toPush.push({ ...c, id: localMatch.id });
+            }
+            // em todo caso, apagar o ID duplicado da nuvem
+            Cloud._enqueue({ type: 'delete', id: c.id });
+          } else {
+            merged.push(c);
+            localByTitle.set(titleKey, c); // registra para evitar duplicata do próximo item
+          }
         }
       }
 

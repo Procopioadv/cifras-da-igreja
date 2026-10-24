@@ -118,13 +118,22 @@ function fetchSiteUrl(url) {
   }
   const res = UrlFetchApp.fetch(url, {
     muteHttpExceptions: true,
+    followRedirects: true,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+      'Cache-Control': 'no-cache',
+      'Upgrade-Insecure-Requests': '1'
     }
   });
   const code = res.getResponseCode();
-  if (code !== 200) throw new Error('HTTP ' + code);
-  return { ok: true, html: res.getContentText() };
+  if (code !== 200) throw new Error('bloqueado-' + code);
+  const html = res.getContentText();
+  if (html.includes('cf-browser-verification') || html.includes('Just a moment') || html.length < 500) {
+    throw new Error('bloqueado-cloudflare');
+  }
+  return { ok: true, html };
 }
 
 function getBackupFolder() {

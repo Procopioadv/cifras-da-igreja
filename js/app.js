@@ -1178,11 +1178,15 @@ async function doImportarUrl() {
     go('edit', { editSong: { title: song.title, artist: song.artist, key: '', category: '', content: song.content }, songId: null });
   } catch(e) {
     document.body.removeChild(loading);
-    const cloudOk = !!localStorage.getItem('cifras_cloud_url');
-    const msg = cloudOk
-      ? 'Erro ao importar: ' + e.message + '\n\nDica: verifique se o Apps Script foi reimplantado após a última atualização.'
-      : 'Erro ao importar.\n\nEsta função requer a sincronização em nuvem (Google Apps Script) configurada em Configurações.';
-    alert(msg);
+    const msg = e.message || '';
+    const bloqueado = msg.includes('bloqueado') || msg.includes('403') || msg.includes('conectar');
+    if (bloqueado) {
+      alert('O CifraClub bloqueou o acesso automático.\n\nAlternativa: abra a música no CifraClub, copie a letra/cifra, cole em "Nova Música" e clique em "Converter".');
+    } else if (!localStorage.getItem('cifras_cloud_url')) {
+      alert('Configure a sincronização em nuvem (Configurações) para importar pelo link.');
+    } else {
+      alert('Erro ao importar: ' + msg);
+    }
   }
 }
 
