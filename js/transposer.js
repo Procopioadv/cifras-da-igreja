@@ -1,7 +1,7 @@
 // Regex que detecta se uma palavra é um acorde
 const CHORD_RE = /^[A-G][#b]?(m|maj|min|aug|dim|sus|add)?(\d+)?([#b]\d+)?(\/[A-G][#b]?)?$/;
 
-function isChordWord(w) { return CHORD_RE.test(w); }
+function isChordWord(w) { return CHORD_RE.test(w.replace(/[.,!?/\\]+$/, '')); }
 
 function isChordOnlyLine(line) {
   const words = line.trim().split(/\s+/);
@@ -12,6 +12,7 @@ function isChordOnlyLine(line) {
 // para o formato de colchetes usado pelo app: [C]palavra [G]outra
 function convertCifraClub(text) {
   text = text.replace(/\r\n?/g, '\n');
+  text = text.replace(/[\u200B\u200C\u200D\uFEFF\u00A0\u2060]/g, '');
   const lines = text.split('\n');
   const out = [];
   let i = 0;

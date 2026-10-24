@@ -1,5 +1,5 @@
 // Bump a versão sempre que fizer deploy — invalida o cache antigo.
-const CACHE = 'cifras-v19';
+const CACHE = 'cifras-v20';
 const ASSETS = [
   './',
   './index.html',
