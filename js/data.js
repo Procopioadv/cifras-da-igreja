@@ -185,10 +185,16 @@ const Cloud = {
       const merged = [];
       const toPush = [];
 
+      // IDs com deleção pendente na fila: não trazer de volta da nuvem
+      const pendingDeletes = new Set(
+        this._queue().filter(a => a.type === 'delete').map(a => a.id)
+      );
+
       const allIds = new Set([...localById.keys(), ...cloudById.keys()]);
       for (const id of allIds) {
         const l = localById.get(id);
         const c = cloudById.get(id);
+        if (!l && c && pendingDeletes.has(id)) continue; // apagado localmente, ignora da nuvem
         if (l && c) {
           const lu = Number(l.updatedAt) || 0;
           const cu = Number(c.updatedAt) || 0;
@@ -471,15 +477,19 @@ const Storage = {
     const data = _db();
     const seen = new Map();
     for (const song of data.songs) {
-      const key = song.title.trim().toLowerCase();
+      const key = `${song.repId || 'igreja'}::${song.title.trim().toLowerCase()}`;
       const existing = seen.get(key);
       if (!existing || (Number(song.updatedAt) || 0) > (Number(existing.updatedAt) || 0)) {
         seen.set(key, song);
       }
     }
+    const keepIds = new Set([...seen.values()].map(s => s.id));
+    const removeIds = data.songs.filter(s => !keepIds.has(s.id)).map(s => s.id);
     const before = data.songs.length;
     data.songs = [...seen.values()];
     _save(data);
+    // Empurra deleções para a nuvem para não voltarem no próximo pull
+    removeIds.forEach(id => Cloud.pushDelete(id));
     return before - data.songs.length;
   }
 };
