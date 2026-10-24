@@ -834,17 +834,6 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// Esconde nav quando teclado abre (input focado no formulário de edição)
-document.addEventListener('focusin', e => {
-  if (e.target.matches('input, textarea, select') && state.view === 'edit') {
-    document.getElementById('bottom-nav')?.classList.add('nav-hidden');
-  }
-});
-document.addEventListener('focusout', e => {
-  if (e.target.matches('input, textarea, select') && state.view === 'edit') {
-    document.getElementById('bottom-nav')?.classList.remove('nav-hidden');
-  }
-});
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && state.presenting) doExitPresent();
@@ -1313,9 +1302,30 @@ async function doImportar(idx) {
 function doConvert() {
   const ta = document.getElementById('ta-content');
   if (!ta) return;
-  const converted = convertCifraClub(ta.value);
-  ta.value = converted;
-  ta.focus();
+  const before = ta.value;
+  if (!before.trim()) { toast('Cole a cifra antes de converter'); return; }
+  try {
+    const converted = convertCifraClub(before);
+    ta.value = converted;
+    if (converted === before) toast('Nada a converter — texto já está no formato correto');
+    else toast('Convertido! Confira o resultado abaixo');
+  } catch(e) {
+    console.error('Erro ao converter:', e);
+    toast('Erro ao converter: ' + (e.message || 'tente novamente'));
+  }
+}
+
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.className = 'toast-visible';
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(() => { t.className = ''; }, 2800);
 }
 
 function insertSection(name) {
@@ -1427,6 +1437,9 @@ function updateNav() {
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === state.view);
   });
+  // Esconde o nav na tela de edição (Voltar e Salvar já estão no header)
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.classList.toggle('nav-hidden', state.view === 'edit');
 }
 
 function render() { renderMain(); }

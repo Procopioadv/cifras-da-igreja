@@ -190,11 +190,6 @@ const Cloud = {
         this._queue().filter(a => a.type === 'delete').map(a => a.id)
       );
 
-      // Índice local por título+repertório para detectar duplicatas de conteúdo
-      const localByTitle = new Map(
-        local.songs.map(s => [`${s.repId||'igreja'}::${(s.title||'').trim().toLowerCase()}`, s])
-      );
-
       const allIds = new Set([...localById.keys(), ...cloudById.keys()]);
       for (const id of allIds) {
         const l = localById.get(id);
@@ -209,26 +204,10 @@ const Cloud = {
           merged.push(l);
           toPush.push(l);
         } else {
-          // Música só existe na nuvem: verificar se já há uma local com mesmo título+rep
-          const titleKey = `${c.repId||'igreja'}::${(c.title||'').trim().toLowerCase()}`;
-          const localMatch = localByTitle.get(titleKey);
-          if (localMatch) {
-            // Duplicata por conteúdo: manter a mais recente e apagar a outra da nuvem
-            const lu = Number(localMatch.updatedAt) || 0;
-            const cu = Number(c.updatedAt) || 0;
-            if (cu > lu) {
-              // versão da nuvem é mais nova: substituir local por ela
-              const idx = merged.indexOf(localMatch);
-              if (idx >= 0) merged.splice(idx, 1);
-              merged.push({ ...c, id: localMatch.id }); // mantém ID local
-              toPush.push({ ...c, id: localMatch.id });
-            }
-            // em todo caso, apagar o ID duplicado da nuvem
-            Cloud._enqueue({ type: 'delete', id: c.id });
-          } else {
-            merged.push(c);
-            localByTitle.set(titleKey, c); // registra para evitar duplicata do próximo item
-          }
+          // Música só existe na nuvem — simplesmente aceita.
+          // Dedup por título é feito APENAS pelo botão manual em configurações,
+          // nunca aqui, para não apagar músicas legítimas vindas de outro dispositivo.
+          merged.push(c);
         }
       }
 
@@ -501,7 +480,10 @@ const Storage = {
     const data = _db();
     const seen = new Map();
     for (const song of data.songs) {
-      const key = `${song.repId || 'igreja'}::${song.title.trim().toLowerCase()}`;
+      // Considera título + artista para não apagar músicas distintas com mesmo título
+      const title = (song.title || '').trim().toLowerCase();
+      const artist = (song.artist || '').trim().toLowerCase();
+      const key = `${song.repId || 'igreja'}::${title}::${artist}`;
       const existing = seen.get(key);
       if (!existing || (Number(song.updatedAt) || 0) > (Number(existing.updatedAt) || 0)) {
         seen.set(key, song);

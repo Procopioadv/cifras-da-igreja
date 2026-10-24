@@ -1177,6 +1177,31 @@ body {
 .nav-btn.active .nav-icon { transform: scale(1.08); transition: transform 0.15s; }
 #bottom-nav.nav-hidden { display: none; }
 
+/* ── TOAST ──────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
+  left: 50%;
+  transform: translate(-50%, 120%);
+  background: var(--text);
+  color: var(--surface);
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 500;
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  pointer-events: none;
+  max-width: 90vw;
+  text-align: center;
+}
+#toast.toast-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
 /* ── BUSCA ONLINE ────────────────────────────── */
 .busca-form {
   display: flex;

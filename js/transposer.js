@@ -1,7 +1,13 @@
-// Regex que detecta se uma palavra é um acorde
-const CHORD_RE = /^[A-G][#b]?(m|maj|min|aug|dim|sus|add)?(\d+)?([#b]\d+)?(\/[A-G][#b]?)?$/;
+// Regex que detecta se uma palavra é um acorde.
+// Aceita cifras compostas comuns do Cifra Club: C7M, Dm7(9), Cadd9/E, F#m7(b5), etc.
+const CHORD_RE = /^[A-G][#b]?([mM]|maj|min|aug|dim|sus|add|º|°)*(\d+[Mm]?)*(\([^)]*\))*(\/[A-G][#b]?)?$/;
 
-function isChordWord(w) { return CHORD_RE.test(w.replace(/[.,!?/\\]+$/, '')); }
+function isChordWord(w) {
+  if (!w) return false;
+  // Remove pontuação final e caracteres invisíveis
+  const clean = w.replace(/[\u200B\u200C\u200D\uFEFF\u00A0\u2060]/g, '').replace(/[.,!?;:/\\]+$/, '');
+  return clean.length > 0 && CHORD_RE.test(clean);
+}
 
 function isChordOnlyLine(line) {
   const words = line.trim().split(/\s+/);
