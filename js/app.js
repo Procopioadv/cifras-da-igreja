@@ -800,9 +800,27 @@ function syncBadgeHTML() {
 }
 
 // Se sair da tela da música por qualquer motivo, encerra apresentação
+// Também sincroniza com a nuvem ao voltar para o app
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && state.presenting && !_wakeLock && 'wakeLock' in navigator) {
-    try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  if (document.visibilityState === 'visible') {
+    if (state.presenting && !_wakeLock && 'wakeLock' in navigator) {
+      try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    }
+    if (Cloud.isConfigured() && navigator.onLine) {
+      Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
+    }
+  }
+});
+
+// Esconde nav quando teclado abre (input focado no formulário de edição)
+document.addEventListener('focusin', e => {
+  if (e.target.matches('input, textarea, select') && state.view === 'edit') {
+    document.getElementById('bottom-nav')?.classList.add('nav-hidden');
+  }
+});
+document.addEventListener('focusout', e => {
+  if (e.target.matches('input, textarea, select')) {
+    document.getElementById('bottom-nav')?.classList.remove('nav-hidden');
   }
 });
 
@@ -1428,6 +1446,13 @@ async function init() {
   if (Cloud.isConfigured() && navigator.onLine) {
     Cloud.pull().then(r => { if (r.ok) { renderMain(); autoBackupIfDue(); } }).catch(() => {});
   }
+
+  // Auto-sync a cada 60 segundos em segundo plano
+  setInterval(() => {
+    if (Cloud.isConfigured() && navigator.onLine && document.visibilityState === 'visible') {
+      Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
+    }
+  }, 60_000);
 
   // Atualiza header e tela de configurações em tempo real quando o status da nuvem muda
   window.addEventListener('cloud:status', () => {

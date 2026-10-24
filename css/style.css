@@ -1175,6 +1175,7 @@ body {
 .nav-icon { font-size: 1.55rem; line-height: 1; display: block; }
 .nav-btn.active { color: var(--primary); }
 .nav-btn.active .nav-icon { transform: scale(1.08); transition: transform 0.15s; }
+#bottom-nav.nav-hidden { display: none; }
 
 /* ── BUSCA ONLINE ────────────────────────────── */
 .busca-form {
