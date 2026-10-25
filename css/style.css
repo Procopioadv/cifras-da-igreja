@@ -993,8 +993,12 @@ body { padding-bottom: 68px; }
   line-height: 1.6;
 }
 
-/* ───────── SEÇÕES (chip tipado) ───────── */
+/* ───────── SEÇÕES (chip tipado + letra tingida) ───────── */
 .s-section { margin: 0.6em 0; }
+.s-section.sec-refrao { color: var(--sec-refrao-text); }
+.s-section.sec-ponte  { color: var(--sec-ponte-text); }
+.s-section.sec-solo   { color: var(--sec-solo-text); }
+.s-section.sec-custom { color: var(--sec-custom-text); }
 .s-section-label {
   display: inline-block;
   font-family: 'Inter', sans-serif;
