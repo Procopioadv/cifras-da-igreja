@@ -1556,8 +1556,10 @@ async function init() {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (notified) return;
       notified = true;
-      if (state.view === 'edit') {
-        toast('Nova versão disponível. Salve e recarregue quando puder.');
+      // Nunca recarregar à força em telas onde há trabalho em curso:
+      // editar (perde texto) e música (perde zoom/scroll durante Missa).
+      if (state.view === 'edit' || state.view === 'song') {
+        toast('Nova versão disponível. Recarregue quando puder.');
       } else {
         toast('Atualizando para a nova versão...');
         setTimeout(() => location.reload(), 1500);
@@ -1584,7 +1586,6 @@ async function init() {
     if (state.view === 'settings') renderMain();
   });
 
-  if (!localStorage.getItem('cifras_samples_loaded') && Songs.all().length === 0) loadSampleSongs();
   history.replaceState({ ...state }, '');
   renderMain();
 }
