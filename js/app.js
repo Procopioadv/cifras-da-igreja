@@ -635,6 +635,8 @@ function viewSetlist() {
 function viewEdit() {
   const song = state.editSong || {};
   const isNew = !song.id;
+  const reps = Repertoire.all();
+  const currentRepId = song.repId || Repertoire.activeId();
 
   return `
     <div class="header">
@@ -659,7 +661,13 @@ function viewEdit() {
         </select>
       </label>
 
-      ${Repertoire.activeId() === 'igreja' ? `<label class="form-label">Categoria (momento da missa)
+      ${reps.length > 1 ? `<label class="form-label">Repertório
+        <select class="form-select" name="repId" onchange="doChangeEditRep(this.value)">
+          ${reps.map(r => `<option value="${h(r.id)}" ${currentRepId === r.id ? 'selected' : ''}>${h(r.name)}</option>`).join('')}
+        </select>
+      </label>` : ''}
+
+      ${currentRepId === 'igreja' ? `<label class="form-label">Categoria (momento da missa)
         <select class="form-select" name="category">
           <option value="">-- Selecionar --</option>
           ${CATS.map(c => `<option value="${h(c)}" ${song.category === c ? 'selected' : ''}>${h(c)}</option>`).join('')}
@@ -1241,6 +1249,7 @@ function doSaveForm() {
   if (!f) return;
   const tagInput = document.getElementById('tags-input');
   if (tagInput && tagInput.value.trim()) doTagAdd(tagInput);
+  const pickedRepId = f.repId?.value || state.editSong?.repId || Repertoire.activeId();
   const song = {
     ...(state.editSong || {}),
     title: f.title.value.trim(),
@@ -1251,10 +1260,30 @@ function doSaveForm() {
     notes: state.editSong?.notes || '',
     content: f.content.value,
     tags: Array.isArray(state.editSong?.tags) ? state.editSong.tags : [],
+    repId: pickedRepId,
   };
   if (!song.title) return;
   const id = Songs.save(song);
+  // Se mudou de repertório, pula pra aba certa pra música aparecer na lista
+  if (pickedRepId && pickedRepId !== Repertoire.activeId()) {
+    Repertoire.setActive(pickedRepId);
+  }
   go('song', { songId: id, semitones: 0, editSong: null });
+}
+
+function doChangeEditRep(repId) {
+  const f = document.getElementById('edit-form');
+  const current = state.editSong || {};
+  state.editSong = {
+    ...current,
+    title: f?.title?.value ?? current.title,
+    artist: f?.artist?.value ?? current.artist,
+    key: f?.key?.value ?? current.key,
+    content: f?.content?.value ?? current.content,
+    category: f?.category?.value ?? current.category ?? '',
+    repId,
+  };
+  renderMain();
 }
 
 function doSave(e) {
