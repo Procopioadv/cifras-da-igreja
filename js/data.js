@@ -231,20 +231,35 @@ const Cloud = {
         Cloud._enqueue({ type: 'setlists', setlists: local.setlists, updatedAt: localSetlistsUpdatedAt });
       }
 
-      // Merge dos repertórios: mesmo esquema (array inteiro, latest wins)
-      const cloudReps = Array.isArray(data.repertoires) ? data.repertoires : null;
+      // Merge dos repertórios: UNION por id. Repertório é aditivo —
+      // se dois aparelhos criaram listas diferentes sem nunca sincronizar,
+      // o merge preserva as duas. Em caso de id igual, cloud ganha o nome.
+      // (Delete não propaga entre aparelhos — limitação conhecida)
+      const cloudReps = Array.isArray(data.repertoires) ? data.repertoires : [];
       const cloudRepsUpdatedAt = Number(data.repertoiresUpdatedAt) || 0;
       const localRepsUpdatedAt = Number(local.repertoiresUpdatedAt) || 0;
-      if (cloudReps && cloudRepsUpdatedAt > localRepsUpdatedAt) {
-        // Garante que 'igreja' nunca é perdido (reset de fábrica)
-        const hasIgreja = cloudReps.some(r => r.id === 'igreja');
-        local.repertoires = hasIgreja ? cloudReps : [{ id: 'igreja', name: 'Igreja' }, ...cloudReps];
-        local.repertoiresUpdatedAt = cloudRepsUpdatedAt;
-        if (!local.repertoires.some(r => r.id === local.activeRepId)) {
-          local.activeRepId = 'igreja';
-        }
-      } else if (localRepsUpdatedAt > cloudRepsUpdatedAt) {
-        Cloud._enqueue({ type: 'repertoires', repertoires: local.repertoires, updatedAt: localRepsUpdatedAt });
+
+      const repsById = new Map();
+      for (const r of cloudReps) repsById.set(r.id, r);
+      for (const r of (local.repertoires || [])) {
+        if (!repsById.has(r.id)) repsById.set(r.id, r);
+      }
+      if (!repsById.has('igreja')) repsById.set('igreja', { id: 'igreja', name: 'Igreja' });
+      const mergedReps = [...repsById.values()];
+
+      const sameAsCloud = mergedReps.length === cloudReps.length &&
+        mergedReps.every(m => cloudReps.some(c => c.id === m.id && c.name === m.name));
+
+      local.repertoires = mergedReps;
+      if (!local.repertoires.some(r => r.id === local.activeRepId)) {
+        local.activeRepId = 'igreja';
+      }
+      if (!sameAsCloud) {
+        // Local tem algo que a nuvem não tem (ou nome diferente) → push
+        local.repertoiresUpdatedAt = Date.now();
+        Cloud._enqueue({ type: 'repertoires', repertoires: mergedReps, updatedAt: local.repertoiresUpdatedAt });
+      } else {
+        local.repertoiresUpdatedAt = Math.max(cloudRepsUpdatedAt, localRepsUpdatedAt);
       }
 
       _save(local);
