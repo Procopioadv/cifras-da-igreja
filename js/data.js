@@ -35,6 +35,10 @@ function _migrate(d) {
   if (!d.activeRepId) d.activeRepId = 'igreja';
   d.songs.forEach(s => { if (!s.repId) s.repId = 'igreja'; });
   d.setlists.forEach(sl => { if (!sl.repId) sl.repId = 'igreja'; });
+  // Se há repertórios custom criados antes do sync existir, marca pra sincronizar
+  if (!d.repertoiresUpdatedAt && d.repertoires.length > 1) {
+    d.repertoiresUpdatedAt = Date.now();
+  }
   return d;
 }
 
@@ -145,13 +149,13 @@ const Cloud = {
   _enqueue(action) {
     const q = this._queue();
     let filtered;
-    if (action.type === 'setlists') {
-      // Setlists: só a última versão do array importa
-      filtered = q.filter(a => a.type !== 'setlists');
+    if (action.type === 'setlists' || action.type === 'repertoires') {
+      // Arrays globais: só a última versão importa
+      filtered = q.filter(a => a.type !== action.type);
     } else {
       // Save/delete: última ação para o mesmo id vence
       const targetId = action.song?.id || action.id;
-      filtered = q.filter(a => a.type === 'setlists' || (a.song?.id || a.id) !== targetId);
+      filtered = q.filter(a => a.type === 'setlists' || a.type === 'repertoires' || (a.song?.id || a.id) !== targetId);
     }
     filtered.push(action);
     this._saveQueue(filtered);
@@ -227,6 +231,22 @@ const Cloud = {
         Cloud._enqueue({ type: 'setlists', setlists: local.setlists, updatedAt: localSetlistsUpdatedAt });
       }
 
+      // Merge dos repertórios: mesmo esquema (array inteiro, latest wins)
+      const cloudReps = Array.isArray(data.repertoires) ? data.repertoires : null;
+      const cloudRepsUpdatedAt = Number(data.repertoiresUpdatedAt) || 0;
+      const localRepsUpdatedAt = Number(local.repertoiresUpdatedAt) || 0;
+      if (cloudReps && cloudRepsUpdatedAt > localRepsUpdatedAt) {
+        // Garante que 'igreja' nunca é perdido (reset de fábrica)
+        const hasIgreja = cloudReps.some(r => r.id === 'igreja');
+        local.repertoires = hasIgreja ? cloudReps : [{ id: 'igreja', name: 'Igreja' }, ...cloudReps];
+        local.repertoiresUpdatedAt = cloudRepsUpdatedAt;
+        if (!local.repertoires.some(r => r.id === local.activeRepId)) {
+          local.activeRepId = 'igreja';
+        }
+      } else if (localRepsUpdatedAt > cloudRepsUpdatedAt) {
+        Cloud._enqueue({ type: 'repertoires', repertoires: local.repertoires, updatedAt: localRepsUpdatedAt });
+      }
+
       _save(local);
       toPush.forEach(song => Cloud._enqueue({ type: 'save', song }));
 
@@ -286,6 +306,18 @@ const Cloud = {
     }
   },
 
+  async pushRepertoires(repertoires, updatedAt) {
+    if (!this.url) return;
+    this._setState('syncing');
+    try {
+      await this._send({ action: 'repertoires', repertoires, updatedAt });
+      this._setState(this._queue().length ? 'pending' : 'idle');
+    } catch(e) {
+      this._enqueue({ type: 'repertoires', repertoires, updatedAt });
+      this._setState('error');
+    }
+  },
+
   async flushQueue() {
     if (!this.url) return { ok: false, remaining: 0 };
     const q = this._queue();
@@ -299,6 +331,7 @@ const Cloud = {
         if (action.type === 'save')    payload = { action: 'save', song: action.song };
         else if (action.type === 'delete')   payload = { action: 'delete', id: action.id };
         else if (action.type === 'setlists') payload = { action: 'setlists', setlists: action.setlists, updatedAt: action.updatedAt };
+        else if (action.type === 'repertoires') payload = { action: 'repertoires', repertoires: action.repertoires, updatedAt: action.updatedAt };
         await this._send(payload);
         sent++;
       } catch {
@@ -441,16 +474,24 @@ const Repertoire = {
   },
   add(name) {
     const data = _db();
+    const now = Date.now();
     const rep = { id: _uid(), name: name.trim() };
     data.repertoires = data.repertoires || [{ id: 'igreja', name: 'Igreja' }];
     data.repertoires.push(rep);
+    data.repertoiresUpdatedAt = now;
     _save(data);
+    Cloud.pushRepertoires(data.repertoires, now);
     return rep.id;
   },
   rename(id, name) {
     const data = _db();
     const rep = (data.repertoires || []).find(r => r.id === id);
-    if (rep) { rep.name = name.trim(); _save(data); }
+    if (!rep) return;
+    rep.name = name.trim();
+    const now = Date.now();
+    data.repertoiresUpdatedAt = now;
+    _save(data);
+    Cloud.pushRepertoires(data.repertoires, now);
   },
   songCount(id) {
     return _db().songs.filter(s => s.repId === id).length;
@@ -458,11 +499,19 @@ const Repertoire = {
   delete(id) {
     if (id === 'igreja') return;
     const data = _db();
+    const now = Date.now();
+    const removedSongIds = data.songs.filter(s => s.repId === id).map(s => s.id);
     data.repertoires = (data.repertoires || []).filter(r => r.id !== id);
     data.songs = data.songs.filter(s => s.repId !== id);
     data.setlists = data.setlists.filter(sl => sl.repId !== id);
     if (data.activeRepId === id) data.activeRepId = 'igreja';
+    data.repertoiresUpdatedAt = now;
+    data.setlistsUpdatedAt = now;
     _save(data);
+    Cloud.pushRepertoires(data.repertoires, now);
+    Cloud.pushSetlists(data.setlists, now);
+    // Músicas apagadas junto com o repertório: propaga deleção pra nuvem
+    removedSongIds.forEach(sid => Cloud.pushDelete(sid));
   }
 };
 

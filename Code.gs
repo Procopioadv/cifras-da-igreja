@@ -93,7 +93,10 @@ function doGet() {
         setlists = [];
       }
     }
-    return out({ ok: true, songs, setlists, setlistsUpdatedAt });
+    let repertoires = JSON.parse(props.getProperty('repertoires') || 'null');
+    let repertoiresUpdatedAt = Number(props.getProperty('repertoiresUpdatedAt') || 0);
+    if (!Array.isArray(repertoires)) repertoires = [{ id: 'igreja', name: 'Igreja' }];
+    return out({ ok: true, songs, setlists, setlistsUpdatedAt, repertoires, repertoiresUpdatedAt });
   } catch(e) {
     return out({ ok: false, error: e.message });
   }
@@ -102,11 +105,12 @@ function doGet() {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    if (body.action === 'save')     return out(saveSong(body.song));
-    if (body.action === 'delete')   return out(deleteSong(body.id));
-    if (body.action === 'setlists') return out(saveSetlists(body));
-    if (body.action === 'backup')   return out(doBackup(body));
-    if (body.action === 'fetchUrl') return out(fetchSiteUrl(body.url));
+    if (body.action === 'save')        return out(saveSong(body.song));
+    if (body.action === 'delete')      return out(deleteSong(body.id));
+    if (body.action === 'setlists')    return out(saveSetlists(body));
+    if (body.action === 'repertoires') return out(saveRepertoires(body));
+    if (body.action === 'backup')      return out(doBackup(body));
+    if (body.action === 'fetchUrl')    return out(fetchSiteUrl(body.url));
     return out({ ok: false, error: 'ação inválida' });
   } catch(e) {
     return out({ ok: false, error: e.message });
@@ -167,6 +171,19 @@ function saveSetlists(body) {
   const props = PropertiesService.getScriptProperties();
   props.setProperty('setlists', JSON.stringify(setlists));
   props.setProperty('setlistsUpdatedAt', String(updatedAt));
+  return { ok: true, updatedAt };
+}
+
+function saveRepertoires(body) {
+  const reps = Array.isArray(body.repertoires) ? body.repertoires.filter(r =>
+    r && typeof r.id === 'string' && typeof r.name === 'string'
+  ) : [];
+  // Garante que o 'igreja' nunca se perde (seria reset de fábrica)
+  if (!reps.some(r => r.id === 'igreja')) reps.unshift({ id: 'igreja', name: 'Igreja' });
+  const updatedAt = Number(body.updatedAt) || Date.now();
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('repertoires', JSON.stringify(reps));
+  props.setProperty('repertoiresUpdatedAt', String(updatedAt));
   return { ok: true, updatedAt };
 }
 
