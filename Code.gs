@@ -13,7 +13,7 @@
 // 6. Cole a URL em Configurações > Sincronização em Nuvem no app
 // ============================================================
 
-const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes','lastPlayedAt','tags'];
+const HEADERS = ['id','title','artist','key','capo','category','content','createdAt','updatedAt','notes','lastPlayedAt','tags','repId'];
 
 function getSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -66,7 +66,8 @@ function doGet() {
           updatedAt:    Number(r[8] || 0),
           notes:        String(r[9] || ''),
           lastPlayedAt: Number(r[10] || 0),
-          tags:         tags
+          tags:         tags,
+          repId:        String(r[12] || 'igreja')
         };
       });
     const props = PropertiesService.getScriptProperties();
@@ -175,12 +176,13 @@ function saveSong(song) {
   const now   = Date.now();
 
   const tagsStr = JSON.stringify(Array.isArray(song.tags) ? song.tags : []);
+  const repId = song.repId || 'igreja';
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(song.id)) {
       sheet.getRange(i + 1, 1, 1, HEADERS.length).setValues([[
         song.id, song.title||'', song.artist||'', song.key||'',
         song.capo||0, song.category||'', song.content||'', rows[i][7], now,
-        song.notes||'', Number(song.lastPlayedAt || rows[i][10] || 0), tagsStr
+        song.notes||'', Number(song.lastPlayedAt || rows[i][10] || 0), tagsStr, repId
       ]]);
       return { ok: true, id: song.id };
     }
@@ -190,7 +192,7 @@ function saveSong(song) {
   sheet.appendRow([
     id, song.title||'', song.artist||'', song.key||'',
     song.capo||0, song.category||'', song.content||'', song.createdAt||now, now,
-    song.notes||'', Number(song.lastPlayedAt || 0), tagsStr
+    song.notes||'', Number(song.lastPlayedAt || 0), tagsStr, repId
   ]);
   return { ok: true, id };
 }

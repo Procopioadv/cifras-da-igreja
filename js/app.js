@@ -910,7 +910,7 @@ document.addEventListener('visibilitychange', async () => {
     if (state.presenting && !_wakeLock && 'wakeLock' in navigator) {
       try { _wakeLock = await navigator.wakeLock.request('screen'); } catch {}
     }
-    if (Cloud.isConfigured() && navigator.onLine && state.view !== 'edit') {
+    if (Cloud.isConfigured() && navigator.onLine && state.view !== 'edit' && state.view !== 'song') {
       Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
     }
   }
@@ -1572,9 +1572,9 @@ async function init() {
     Cloud.pull().then(r => { if (r.ok) { renderMain(); autoBackupIfDue(); } }).catch(() => {});
   }
 
-  // Auto-sync a cada 60 segundos em segundo plano (nunca durante edição)
+  // Auto-sync a cada 60 segundos em segundo plano (nunca durante edição nem com música aberta)
   setInterval(() => {
-    if (Cloud.isConfigured() && navigator.onLine && document.visibilityState === 'visible' && state.view !== 'edit') {
+    if (Cloud.isConfigured() && navigator.onLine && document.visibilityState === 'visible' && state.view !== 'edit' && state.view !== 'song') {
       Cloud.pull().then(r => { if (r.ok) renderMain(); }).catch(() => {});
     }
   }, 60_000);
